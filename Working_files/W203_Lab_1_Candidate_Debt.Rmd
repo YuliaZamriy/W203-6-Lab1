@@ -1,0 +1,16 @@
+---
+title: 'W203 Lab 1: Candidate Debt EDA'
+author: "Yulia and Mitch"
+date: \today
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+
+```
+
