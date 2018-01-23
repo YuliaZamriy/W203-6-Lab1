@@ -30,3 +30,9 @@ debt
 **Data**: Monthly voter registration statistics for registered voters in Oregon from 2012
 
 **Dependent variable**: "amount"
+
+### Progress
+
+#### Monday Jan 22nd
+- MS corrected .csv (shifter position column)
+- YZ uploaded into R (removed 56 rows with missing debt data, recoded dates from char to dates, kept 18 variables only)
