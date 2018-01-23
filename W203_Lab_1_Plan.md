@@ -1,6 +1,6 @@
 W203 Lab 1: EDA
 
-###General Overview:
+### General Overview:
 
 **Goal**: find new insight into a data set
 
@@ -22,7 +22,7 @@ etc.
 - Conclusion (20 pts)
 
 
-###Candidate Dept
+### Candidate Dept
 
 **Goal**: Perform an exploratory analysis to understand how campaign characteristics are related to the candidates
 debt
