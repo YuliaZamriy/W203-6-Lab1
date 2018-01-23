@@ -11,6 +11,55 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
 
 ```{r}
+CandidateDebt <- read.csv('CandidateDebt_corrected.csv', stringsAsFactors = FALSE)
+```
 
+```{r}
+str(CandidateDebt)
+```
+
+```{r}
+# remove records with missing record type (missing values are miscoded as #NA)
+CandidateDebt <- CandidateDebt[!grepl('#N/A', CandidateDebt$recordtype),]
+```
+
+```{r}
+CandidateDebt$fromdate <- as.Date(CandidateDebt$fromdate, format = "%m/%d/%Y")
+CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%Y")
+CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%Y")
+```
+
+```{r}
+keep_vars <- c("reportnumber", "filerid", "filername", "office", "legislativedistrict",
+    "party", "jurisdiction", "jurisdictioncounty", "jurisdictiontype",
+    "amount", "fromdate", "thrudate", "debtdate", "code", "description",
+    "vendorname", "vendorcity", "vendorstate")
+
+CandidateDebt <- CandidateDebt[keep_vars]
+```
+
+```{r}
+str(CandidateDebt)
+```
+
+```{r}
+summary(CandidateDebt)
+```
+```{r}
+sapply(CandidateDebt, function(x) sum(grepl('#NA', x)))
+```
+
+```{r}
+sum(is.na(CandidateDebt))
+```
+```{r}
+# checking some variables with smaller number of unique values
+cat_vars <- c("office", "legislativedistrict", "party", "jurisdiction", "jurisdictioncounty",
+              "jurisdictiontype", "fromdate", "thrudate", "debtdate", "code",  
+              "vendorcity", "vendorstate")
+sapply(CandidateDebt[, cat_vars], function(x) table(x))
+```
+```{r}
+save(CandidateDebt, file = "CandidateDebt.RData")
 ```
 
