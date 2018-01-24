@@ -2,8 +2,7 @@
 title: 'W203 Lab 1: Candidate Debt EDA'
 author: "Yulia and Mitch"
 date: \today
-output:
-  pdf_document: default
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
