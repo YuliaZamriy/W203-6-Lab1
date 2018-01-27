@@ -1,5 +1,6 @@
 #setwd("C:/Users/yzamriy/Documents/Tools and Methodology/DS/Git/Berkeley/W203-6-Lab1/Working_files/")
 #setwd("C:/Users/Zamriyka/Documents/GitHub/W203-6-Lab1/Working_files/")
+setwd("/home/yulia/Documents/MIDS/W203-6-lab1/Working_files/")
 
 load("CandidateDebt.RData")
 
@@ -55,10 +56,10 @@ CandidateDebtAggr <- CandidateDebt %>%
             #jurisdictioncounty_f = first(jurisdictioncounty),
             jurcounty_n = n_distinct(jurisdictioncounty))
 
-View(CandidateDebtAggr[CandidateDebtAggr$party_n == 1,])
+#View(CandidateDebtAggr[CandidateDebtAggr$party_n == 1,])
 
 table(CandidateDebt$party)
-#table(CandidateDebtAggr$party_n)
+table(CandidateDebtAggr$party_n)
 table(CandidateDebtAggr$office_f)
 
 debt_office <- aggregate(ttl_amount ~ office_f, data = CandidateDebtAggr, sum)
