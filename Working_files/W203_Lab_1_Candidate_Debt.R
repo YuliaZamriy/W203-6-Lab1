@@ -25,6 +25,8 @@ aggr_office2 <- aggregate(office ~ filerid, data = aggr_office, length)
 table(aggr_office2$office)
 #   1 
 # 140 
+aggr_office3 <- aggregate(filerid ~ office, data = aggr_office, length)
+aggr_office3[aggr_office3$filerid > 3,]
 
 aggr_party <- aggregate(amount ~ filerid + party, data = CandidateDebt, sum)
 aggr_party2 <- aggregate(party ~ filerid, data = aggr_party, length)
@@ -38,13 +40,15 @@ summary(CandidateDebt$thrudate)
 
 plot(CandidateDebt$debtdate, CandidateDebt$amount)
 
-#CandidateDebt$monthsindebt <- round(max(CandidateDebt$debtdate) - CandidateDebt$debtdate) / 30)
 CandidateDebt$weeksindebt <- round(difftime(max(CandidateDebt$debtdate), CandidateDebt$debtdate, units = "weeks"))
-aggr_weeks <- aggregate(amount ~ weeksindebt, data = CandidateDebt, sum)
+CandidateDebt$monthsindebt <- round(CandidateDebt$weeksindebt / 52 * 12)
+CandidateDebt$monthsindebt <- as.numeric(CandidateDebt$monthsindebt)
 
+aggr_weeks <- aggregate(amount ~ weeksindebt, data = CandidateDebt, sum)
 aggr_weeks <- aggr_weeks[order(-aggr_weeks$weeksindebt),]
 
-par(mar = c(4,4,2,1))
+par(mar = c(4,4,2,1), 
+    oma = c(1,1,1,1))
 barplot(aggr_weeks$amount/1000,
         names.arg = aggr_weeks$weeksindebt,
         cex.names = 0.5,
@@ -55,6 +59,150 @@ barplot(aggr_weeks$amount/1000,
         #main = "Debt Accumulation Before Election",
         col = "darkgreen")
 title("Debt Accumulation Before Election",
+      cex.main = 1)
+
+aggr_months <- aggregate(amount ~ monthsindebt, data = CandidateDebt, sum)
+aggr_months <- aggr_months[order(-aggr_months$monthsindebt),]
+
+barplot(aggr_months$amount/1000,
+        names.arg = aggr_months$monthsindebt,
+        cex.names = 0.8,
+        cex.axis = 0.8,
+        las = 2,
+        xlab = "Months till election",
+        ylab = "Debt (in $'000)",
+        col = "darkgreen")
+title("Debt Accumulation Before Election",
+      cex.main = 1)
+
+aggr_months_office <- aggregate(amount ~ monthsindebt + office, data = CandidateDebt, sum)
+aggr_months_office <-
+  reshape(aggr_months_office, 
+          v.names = "amount", 
+          idvar = "office",
+          timevar = "monthsindebt",
+          direction = "wide")
+
+aggr_months_office[is.na(aggr_months_office)] <- 0
+
+aggr_months_office$amount.13plus = aggr_months_office$amount.13 +
+  aggr_months_office$amount.14 +
+  aggr_months_office$amount.15 +
+  aggr_months_office$amount.16 +
+  aggr_months_office$amount.17 +
+  aggr_months_office$amount.18 +
+  aggr_months_office$amount.19 +
+  aggr_months_office$amount.20 +
+  aggr_months_office$amount.20 +
+  aggr_months_office$amount.21 +
+  aggr_months_office$amount.22 +
+  aggr_months_office$amount.23 +
+  aggr_months_office$amount.31 +
+  aggr_months_office$amount.32 +
+  aggr_months_office$amount.33 +
+  aggr_months_office$amount.40 +
+  aggr_months_office$amount.42 +
+  aggr_months_office$amount.43 +
+  aggr_months_office$amount.46
+  
+keep_vars <- c("office", "amount.13plus", "amount.12", "amount.11", "amount.10", "amount.9", "amount.8", "amount.7",
+               "amount.6", "amount.5", "amount.4", "amount.3", "amount.2", "amount.1", "amount.0")  
+new_vars <- c("office", "Month.13p", "Month.12", "Month.11", "Month.10", "Month.9", "Month.8", "Month.7",
+              "Month.6", "Month.5", "Month.4", "Month.3", "Month.2", "Month.1", "Month.0")  
+
+aggr_months_office <- aggr_months_office[, keep_vars]
+colnames(aggr_months_office) <- new_vars
+aggr_months_office2 <- aggr_months_office[,-1]
+rownames(aggr_months_office2) <- aggr_months_office[, 1]
+
+par(mar = c(4,4,2,1), 
+    oma = c(1,1,1,1))
+barplot(as.matrix(aggr_months_office2), 
+        border="white", 
+        space=0.04, 
+        cex.names = 0.5,
+        cex.axis = 0.8,
+        col = rainbow(16),
+        axes = FALSE,
+        ylim = range(0, 500000),
+        xlab = "Months till election",
+        ylab = "Debt (in $'000)")
+axis(2, at = seq(0, 500000, 50000),
+     labels = seq(0, 5000, 500),
+     las = 1)
+legend("topright", 
+       legend = rownames(aggr_months_office2), 
+       fill = rainbow(16), 
+       ncol = 1,
+       cex = 0.75)
+title("Debt Accumulation Before Election by Office",
+      cex.main = 1)
+
+selected_offices <- aggr_office3[aggr_office3$filerid > 3,1]
+aggr_months_office3 <- aggr_months_office[aggr_months_office$office %in% selected_offices,][,-1]
+rownames(aggr_months_office3) <- aggr_months_office[aggr_months_office$office %in% selected_offices,][, 1]
+
+library(RColorBrewer)
+
+barplot(as.matrix(aggr_months_office3), 
+        border="white", 
+        space=0.04, 
+        cex.names = 0.5,
+        cex.axis = 0.8,
+        col = brewer.pal(6, "Dark2"),
+        axes = FALSE,
+        ylim = range(0, 500000),
+        xlab = "Months till election",
+        ylab = "Debt (in $'000)")
+axis(2, at = seq(0, 500000, 50000),
+     labels = seq(0, 5000, 500),
+     las = 1)
+legend("topright", 
+       legend = rownames(aggr_months_office3), 
+       fill = brewer.pal(6, "Dark2"), 
+       ncol = 1,
+       cex = 0.75)
+title("Debt Accumulation Before Election by Office",
+      cex.main = 1)
+
+amount_by_office <- aggregate(amount ~ office, data = CandidateDebt, sum)
+aggr_months_office4 <- amount_by_office[amount_by_office$office %in% selected_offices, ]
+aggr_months_office4 <- cbind(aggr_months_office3, amount_by_office[amount_by_office$office %in% selected_offices, ])
+aggr_months_office4$office <- NULL
+aggr_months_office4$Month.13plus <- round(aggr_months_office4$Month.13plus / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.12 <- round(aggr_months_office4$Month.12 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.11 <- round(aggr_months_office4$Month.11 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.10 <- round(aggr_months_office4$Month.10 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.9 <- round(aggr_months_office4$Month.9 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.8 <- round(aggr_months_office4$Month.8 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.7 <- round(aggr_months_office4$Month.7 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.6 <- round(aggr_months_office4$Month.6 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.5 <- round(aggr_months_office4$Month.5 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.4 <- round(aggr_months_office4$Month.4 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.3 <- round(aggr_months_office4$Month.3 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.2 <- round(aggr_months_office4$Month.2 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.1 <- round(aggr_months_office4$Month.1 / aggr_months_office4$amount, 2)
+aggr_months_office4$Month.0 <- round(aggr_months_office4$Month.0 / aggr_months_office4$amount, 2)
+
+barplot(as.matrix(aggr_months_office4[,-15]), 
+        border="white", 
+        space=0.04, 
+        cex.names = 0.5,
+        cex.axis = 0.8,
+        col = brewer.pal(6, "Dark2"),
+        #axes = FALSE,
+        #ylim = range(0, 500000),
+        xlab = "Months till election",
+        ylab = "Debt (in $'000)")
+axis(2, at = seq(0, 500000, 50000),
+     labels = seq(0, 5000, 500),
+     las = 1)
+legend("topright", 
+       legend = rownames(aggr_months_office3), 
+       fill = brewer.pal(6, "Dark2"), 
+       ncol = 1,
+       cex = 0.75)
+title("Debt Accumulation Before Election by Office",
       cex.main = 1)
 
 library(tidyverse)
@@ -85,7 +233,7 @@ table(CandidateDebtAggr$office_f)
 
 debt_office <- aggregate(ttl_amount ~ office_f, data = CandidateDebtAggr, sum)
 
-cbarplot(debt_office$ttl_amount/1000,
+barplot(debt_office$ttl_amount/1000,
         names.arg = debt_office$office_f,
         cex.names = 0.5,
         cex.axis = 0.5,
