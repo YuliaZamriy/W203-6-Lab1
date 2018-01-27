@@ -47,9 +47,9 @@ summary(CandidateDebt$amount)
 
 ```{r}
 # converting dates from character to dates
-CandidateDebt$fromdate <- as.Date(CandidateDebt$fromdate, format = "%m/%d/%Y")
-CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%Y")
-CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%Y")
+CandidateDebt$fromdate <- as.Date(CandidateDebt$fromdate, format = "%m/%d/%y")
+CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%y")
+CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%y")
 ```
 
 ```{r}
