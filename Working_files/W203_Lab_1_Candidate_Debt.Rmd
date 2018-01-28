@@ -9,41 +9,82 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
 
+#### 1. Introduction
+
+### 1.1 Loading raw dataset
+
 ```{r}
-# correcting variable names
+CandidateDebt <- read.csv("CandidateDebt.csv", 
+                          stringsAsFactors = FALSE)
+str(CandidateDebt)
+```
+
+Problems with target variable *amount*:
+
+```{r}
+table(CandidateDebt$amount)
+```
+
+Resolution: shift column names:
+
+```{r}
+# get column names from row data
 var_names <- colnames(read.csv("CandidateDebt.csv", nrows = 1))
 
+# insert column after "position" and remove last column
 var_names_corrected <- c(var_names[1:grep("position", var_names)],
                          "position2",
                          var_names[(grep("position", var_names) + 1):(length(var_names) - 1)])
 ```
 
+Re-loading raw data:
 
 ```{r}
 # reading the data with correct headers
 CandidateDebt <- read.csv("CandidateDebt.csv", 
                           stringsAsFactors = FALSE,
                           col.names = var_names_corrected)
+rm(list = c("var_names", "var_names_corrected"))
+```
+
+Description of data set:
+
+Blah Blah Blah
+
+```{r}
+dim(CandidateDebt)
 ```
 
 ```{r}
-str(CandidateDebt)
+# Converting target variable to numeric
+CandidateDebt$amount_num <- as.numeric(CandidateDebt$amount)
+summary(CandidateDebt$amount_num)
+```
+
+### 1.2 Exploring rows with missing debt data
+
+```{r}
+# creating flag for missing values (1 for missing)
+CandidateDebt$missing_amount <- ifelse(is.na(CandidateDebt$amount_num), 1, 0)
+table(CandidateDebt$missing_amount)
+```
+
+While exploring 56 rows with missing data, we discovered that those rows are missing data in all columns except filer name and office they run for.
+Good news is we are losing only one candidate if we exclude those 56 rows from the analysis. No unique values of *office* variable are among 56 rows.
+
+```{r}
+# number of of unique filer ids (candidates in full dataset)
+length(unique(CandidateDebt$filerid))
+# number of unique filer ids (candidates) in data set without 56 rows with missing data:
+length(unique(CandidateDebt[CandidateDebt$missing_amount == 0,]$filerid))
 ```
 
 ```{r}
-# remove records with missing record type (missing values are miscoded as #NA)
-CandidateDebt <- CandidateDebt[!grepl('#N/A', CandidateDebt$recordtype),]
+# number of of unique values of office (candidates in full dataset)
+length(unique(CandidateDebt$office))
+# number of unique values of office in data set without 56 rows with missing data:
+length(unique(CandidateDebt[CandidateDebt$missing_amount == 0,]$office))
 ```
-
-```{r}
-# converting amount from character to numeric
-CandidateDebt$amount <- as.numeric(CandidateDebt$amount)
-```
-
-```{r}
-summary(CandidateDebt$amount)
-```
-
 
 ```{r}
 # converting dates from character to dates
@@ -52,43 +93,215 @@ CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%y")
 CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%y")
 ```
 
+### 1.3 Creating analytic dataset
+
+Exlcude variables:
+
+- origin (one value = B.3)
+
+- filertype (one value = Candidate)
+
+- filername, firstname, middleinitial, lastname (will use filerid as a candidate identifier)
+
+- position and position2 (values are not clear and were messed up in raw data)
+
+- electionyear (one value = 2012)
+
+- recordtype (one value = DEBT)
+
 ```{r}
 # creating a vector of variables to keep for analysis
 keep_vars <- c("reportnumber", "filerid", "filername", "office", "legislativedistrict",
     "party", "jurisdiction", "jurisdictioncounty", "jurisdictiontype",
-    "amount", "fromdate", "thrudate", "debtdate", "code", "description",
-    "vendorname", "vendorcity", "vendorstate")
+    "amount_num", "fromdate", "thrudate", "debtdate", "code", "description",
+    "vendorname", "vendoraddress","vendorcity", "vendorstate")
 
-CandidateDebt <- CandidateDebt[keep_vars]
+# removing 56 rows with missing data
+CandidateDebtSub <- CandidateDebt[CandidateDebt$missing_amount == 0,]
+CandidateDebtSub <- CandidateDebtSub[keep_vars]
+rm(keep_vars)
 ```
 
-```{r}
-str(CandidateDebt)
-```
+Looking at main analytic dataset:
 
 ```{r}
-summary(CandidateDebt)
-```
-
-```{r}
-# checking if there are any "#NA" values left
-sapply(CandidateDebt, function(x) sum(grepl('#NA', x)))
+summary(CandidateDebtSub)
 ```
 
 ```{r}
 # checking for presense of missing values
-sum(is.na(CandidateDebt))
+sum(is.na(CandidateDebtSub))
+```
+
+### 1.4 Evaluating data quality
+
+Calculating number of unique values per candidate for campaign related variable
+
+```{r}
+aggr_office <- aggregate(amount_num ~ filerid + office, data = CandidateDebtSub, sum)
+aggr_office <- aggregate(office ~ filerid, data = aggr_office, length)
+
+aggr_legdis <- aggregate(amount_num ~ filerid + legislativedistrict, data = CandidateDebtSub, sum)
+aggr_legdis <- aggregate(legislativedistrict ~ filerid, data = aggr_legdis, length)
+
+aggr_party <- aggregate(amount_num ~ filerid + party, data = CandidateDebtSub, sum)
+aggr_party <- aggregate(party ~ filerid, data = aggr_party, length)
+
+aggr_jur <- aggregate(amount_num ~ filerid + jurisdiction, data = CandidateDebtSub, sum)
+aggr_jur <- aggregate(jurisdiction ~ filerid, data = aggr_jur, length)
+
+aggr_jurc <- aggregate(amount_num ~ filerid + jurisdictioncounty, data = CandidateDebtSub, sum)
+aggr_jurc <- aggregate(jurisdictioncounty ~ filerid, data = aggr_jurc, length)
+
+aggr_jurt <- aggregate(amount_num ~ filerid + jurisdictiontype, data = CandidateDebtSub, sum)
+aggr_jurt <- aggregate(jurisdictiontype ~ filerid, data = aggr_jurt, length)
+
+aggr_comb <- cbind(aggr_office, 
+                   aggr_legdis[,2],
+                   aggr_party[,2],
+                   aggr_jur[,2],
+                   aggr_jurc[,2],
+                   aggr_jurt[,2])
+
+colnames(aggr_comb) <- c("filerid", "office", "legislativedistrict", "party", "jurisdiction", 
+                         "jurisdictioncounty", "jurisdictiontype")
+rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc", "aggr_jurt"))
+
+#sapply(aggr_comb[, -1], table)
+summary(aggr_comb[, -1])
+```
+
+Based on the above, we thing all but *office* variables are unreliable
+
+```{r}
+# creating flag variables for candidates with more than 1 unique value
+aggr_comb$legdist_mult <- ifelse(aggr_comb$legislativedistrict > 1, 1, 0)
+aggr_comb$party_mult <- ifelse(aggr_comb$party > 1, 1, 0)
+aggr_comb$jur_mult <- ifelse(aggr_comb$jurisdiction > 1, 1, 0)
+aggr_comb$jurc_mult <- ifelse(aggr_comb$jurisdictioncounty > 1, 1, 0)
+aggr_comb$jurt_mult <- ifelse(aggr_comb$jurisdictiontype > 1, 1, 0)
+aggr_comb$mult <- aggr_comb$legdist_mult + aggr_comb$party_mult + aggr_comb$jur_mult +
+  aggr_comb$jurc_mult + aggr_comb$jurt_mult
+table(aggr_comb$mult)
+```
+
+Only 34 candidates with "clean" data
+
+```{r}
+# adding this flag variable to the main data set
+CandidateDebtSub <- merge(CandidateDebtSub, aggr_comb[, c("filerid", "mult")], by = "filerid")
+rm(aggr_comb)
 ```
 
 ```{r}
-# checking some variables with smaller number of unique values
-cat_vars <- c("office", "legislativedistrict", "party", "jurisdiction", "jurisdictioncounty",
-              "jurisdictiontype", "fromdate", "thrudate", "debtdate", "code",  
-              "vendorcity", "vendorstate")
-sapply(CandidateDebt[, cat_vars], function(x) table(x))
+# counting number of unique offices among those 34 candidates
+length(unique(CandidateDebtSub$office[CandidateDebtSub$mult == 0]))
+```
+```{r}
+# counting number of unique parties/offices among those 34 candidates
+aggr_party <- aggregate(amount_num ~ filerid + party + office, data = CandidateDebtSub[CandidateDebtSub$mult == 0,], sum)
+table(aggr_party$office, aggr_party$party)
+rm(aggr_party)
+```
+
+Based on the above, only "State Prepresentative" and "Superior Court Judge" had representatives of two major parties.This is suspect.
+Hence, we will eclude the following 5 variables from the analysis: *legislativedistrict*, *party*, *jurisdiction*, *jurisdictioncounty*, *jurisdictiontype*
+
+### 1.5 Creating extra variables
+
+Processing date variables
+
+```{r}
+summary(CandidateDebtSub$debtdate)
+summary(CandidateDebtSub$fromdate)
+summary(CandidateDebtSub$thrudate)
+```
+
+Based on the above we will assume that the election was in August 2012
+
+```{r}
+# Number of months before election the debt occured
+CandidateDebtSub$weeksindebt <- 
+  round(difftime(max(CandidateDebtSub$debtdate), CandidateDebtSub$debtdate, units = "weeks"))
+CandidateDebtSub$monthsindebt <- 
+  round(CandidateDebtSub$weeksindebt / 52 * 12)
+CandidateDebtSub$monthsindebt <- 
+  as.numeric(CandidateDebtSub$monthsindebt)
+# capping months at 13 months (for exploratory reasons)
+CandidateDebtSub$monthsindebt_cap <- 
+  ifelse(CandidateDebtSub$monthsindebt > 12, 13, CandidateDebtSub$monthsindebt)
+summary(CandidateDebtSub$monthsindebt)
+summary(CandidateDebtSub$monthsindebt_cap)
+```
+
+Recoding debt *description* variable to make it more digestable
+
+```{r}
+creditcard <- c("AM EX", "AMERICAN EXPRESS", "AMERICAN EXPRESS LOWES", "AMEX",
+                "CITI MASTERCARD", "MASTERCARD", "VISA", "CAPITOL ONE",
+                "MASTER CARD")
+consulting <- c("CONSULTING", "JANUARY SERVICES", "$750 PER MONTH THROUGH OCTOBER",
+                "AUGUST CONSULTING", "CONSULTING ESTIMATE", "CONSULTING/PHOTOGRAPHY",
+                "CONSULTING/TRAVEL", "MAY CONSULTING SERVICES", "MONTHLY CONSULTING FEE",
+                "RETAINER", "APRIL RETAINER")
+swag <- c("RE-ORDER TEE SHIRTS", "BUMPER STICKERS/FLYERS", "CONSULTING/YARD SIGNS", 
+          "YARD SIGNS", "OFFICE SUPPLIES/ WATER FOR KICKOFF")
+
+CandidateDebtSub$description_aggr[grepl("TREASURY", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "TREASURY"
+CandidateDebtSub$description_aggr[grepl("CAMPAIGN", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "CAMPAIGN MANAGEMENT"
+CandidateDebtSub$description_aggr[grepl("FUND", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "FUNDRAISING"
+CandidateDebtSub$description_aggr[grepl("CARRY FORWARD", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "CARRY FORWARD"
+CandidateDebtSub$description_aggr[grepl("REIMB", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "REIMBURSEMENT"
+CandidateDebtSub$description_aggr[grepl("ACCOUNTING", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "ACCOUNTING"
+CandidateDebtSub$description_aggr[grepl("BONUS", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "BONUS"
+CandidateDebtSub$description_aggr[grepl("DESIGN", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DESIGN/PRINT"
+CandidateDebtSub$description_aggr[grepl("PRINT", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DESIGN/PRINT"
+CandidateDebtSub$description_aggr[grepl("POLLING", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "POLLING"
+CandidateDebtSub$description_aggr[grepl("CREDIT", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "CREDIT CARD"
+CandidateDebtSub$description_aggr[CandidateDebtSub$vendorname %in% creditcard] <-
+  "CREDIT CARD"
+CandidateDebtSub$description_aggr[CandidateDebtSub$description %in% consulting] <-
+  "CONSULTING"
+CandidateDebtSub$description_aggr[CandidateDebtSub$description %in% swag] <-
+  "SWAG"
+CandidateDebtSub$description_aggr[grepl("MAIL", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "MAIL"
+CandidateDebtSub$description_aggr[grepl("POSTAGE", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "MAIL"
+CandidateDebtSub$description_aggr[grepl("STAMPS", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "MAIL"
+CandidateDebtSub$description_aggr[grepl("DATA", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("DISPLAY", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("WEB", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("ADVERTISEMENT", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("COMPUTER", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[is.na(CandidateDebtSub$description_aggr)] <- "OTHER"
+
+rm(list = c("creditcard", "consulting", "swag"))
+table(CandidateDebtSub$description_aggr)
+#table(CandidateDebtSub$description[CandidateDebtSub$description_aggr == "OTHER"])
 ```
 
 ```{r}
-save(CandidateDebt, file = "CandidateDebt.RData")
+aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
+aggr_descr[order(-aggr_descr$amount_num),]
+rm(aggr_descr)
 ```
 
+Now we are ready to explore!
