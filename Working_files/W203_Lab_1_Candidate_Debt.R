@@ -269,18 +269,16 @@ creditcard <- c("AM EX", "AMERICAN EXPRESS", "AMERICAN EXPRESS LOWES", "AMEX",
                 "CITI MASTERCARD", "MASTERCARD", "VISA", "CAPITOL ONE",
                 "MASTER CARD")
 
+consulting <- c("CONSULTING", "JANUARY SERVICES", "$750 PER MONTH THROUGH OCTOBER")
+swag <- c("RE-ORDER TEE SHIRTS", "BUMPER STICKERS/FLYERS", "CONSULTING/YARD SIGNS", 
+          "YARD SIGNS", "OFFICE SUPPLIES/ WATER FOR KICKOFF")
+
 CandidateDebt$description_aggr[grepl("TREASURY", CandidateDebt$description, ignore.case = TRUE)] <-
   "TREASURY"
 CandidateDebt$description_aggr[grepl("RETAINER", CandidateDebt$description, ignore.case = TRUE)] <-
   "RETAINER"
 CandidateDebt$description_aggr[grepl("CAMPAIGN", CandidateDebt$description, ignore.case = TRUE)] <-
   "CAMPAIGN MANAGEMENT"
-CandidateDebt$description_aggr[grepl("CONSULTING", CandidateDebt$description, ignore.case = TRUE)] <-
-  "CONSULTING"
-CandidateDebt$description_aggr[grepl("PER MONTH", CandidateDebt$description, ignore.case = TRUE)] <-
-  "CONSULTING"
-CandidateDebt$description_aggr[grepl("JANUARY SERVICES", CandidateDebt$description, ignore.case = TRUE)] <-
-  "CONSULTING"
 CandidateDebt$description_aggr[grepl("FUND", CandidateDebt$description, ignore.case = TRUE)] <-
   "FUNDRAISING"
 CandidateDebt$description_aggr[grepl("PRINT", CandidateDebt$description, ignore.case = TRUE)] <-
@@ -295,20 +293,22 @@ CandidateDebt$description_aggr[grepl("BONUS", CandidateDebt$description, ignore.
   "BONUS"
 CandidateDebt$description_aggr[grepl("DESIGN", CandidateDebt$description, ignore.case = TRUE)] <-
   "DESIGN"
-CandidateDebt$description_aggr[grepl("SHIRTS", CandidateDebt$description, ignore.case = TRUE)] <-
-  "SWAG/SIGNAGE/MAIL"
-CandidateDebt$description_aggr[grepl("STICKERS", CandidateDebt$description, ignore.case = TRUE)] <-
-  "SWAG/SIGNAGE/MAIL"
-CandidateDebt$description_aggr[grepl("SIGNS", CandidateDebt$description, ignore.case = TRUE)] <-
-  "SWAG/SIGNAGE/MAIL"
+CandidateDebt$description_aggr[grepl("POLLING", CandidateDebt$description, ignore.case = TRUE)] <-
+  "POLLING"
+CandidateDebt$description_aggr[grepl("CREDIT", CandidateDebt$description, ignore.case = TRUE)] <-
+  "CREDIT CARD"
+CandidateDebt$description_aggr[CandidateDebt$vendorname %in% creditcard] <-
+  "CREDIT CARD"
+CandidateDebt$description_aggr[CandidateDebt$description %in% consulting] <-
+  "CONSULTING"
+CandidateDebt$description_aggr[CandidateDebt$description %in% swag] <-
+  "SWAG"
 CandidateDebt$description_aggr[grepl("MAIL", CandidateDebt$description, ignore.case = TRUE)] <-
-  "SWAG/SIGNAGE/MAIL"
-CandidateDebt$description_aggr[grepl("SUPPLIES", CandidateDebt$description, ignore.case = TRUE)] <-
-  "SWAG/SIGNAGE/MAIL"
+  "MAIL"
 CandidateDebt$description_aggr[grepl("POSTAGE", CandidateDebt$description, ignore.case = TRUE)] <-
-  "SWAG/SIGNAGE/MAIL"
+  "MAIL"
 CandidateDebt$description_aggr[grepl("STAMPS", CandidateDebt$description, ignore.case = TRUE)] <-
-  "SWAG/SIGNAGE/MAIL"
+  "MAIL"
 CandidateDebt$description_aggr[grepl("DATA", CandidateDebt$description, ignore.case = TRUE)] <-
   "DATA/TECH/AD"
 CandidateDebt$description_aggr[grepl("DISPLAY", CandidateDebt$description, ignore.case = TRUE)] <-
@@ -321,12 +321,6 @@ CandidateDebt$description_aggr[grepl("TELEPHON", CandidateDebt$description, igno
   "DATA/TECH/AD"
 CandidateDebt$description_aggr[grepl("COMPUTER", CandidateDebt$description, ignore.case = TRUE)] <-
   "DATA/TECH/AD"
-CandidateDebt$description_aggr[grepl("POLLING", CandidateDebt$description, ignore.case = TRUE)] <-
-  "POLLING"
-CandidateDebt$description_aggr[grepl("CREDIT", CandidateDebt$description, ignore.case = TRUE)] <-
-  "CREDIT CARD"
-CandidateDebt$description_aggr[CandidateDebt$vendorname %in% creditcard] <-
-  "CREDIT CARD"
 CandidateDebt$description_aggr[is.na(CandidateDebt$description_aggr)] <- "OTHER"
 
 table(CandidateDebt$description_aggr)
