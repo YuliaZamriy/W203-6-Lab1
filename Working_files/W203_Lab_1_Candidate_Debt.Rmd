@@ -305,3 +305,8 @@ rm(aggr_descr)
 ```
 
 Now we are ready to explore!
+
+```{r}
+save(CandidateDebtSub, file = "CandidateDebtSub.RData")
+```
+
