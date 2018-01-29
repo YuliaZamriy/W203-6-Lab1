@@ -2,12 +2,13 @@
 title: 'W203 Lab 1: Candidate Debt EDA'
 author: "Yulia and Mitch"
 date: \today
-geometry: margin = 2cm
-output: pdf_document
+output:
+  pdf_document: default
+geometry: margin=1in
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning=TRUE, message=FALSE, tidy=TRUE, strip.white = TRUE)
 ```
 
 #### 1. Introduction
@@ -495,6 +496,26 @@ title("Debt Accumulation Before Election",
       cex.main = 1)
 
 rm(aggr_months)
+```
+
+
+```{r}
+aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
+aggr_descr0 <- aggr_descr0[order(-aggr_descr0$amount_num),]
+
+par(mar = c(7,4,2,3), 
+    oma = c(0,0,0,0),
+    xpd = TRUE)
+boxplot(amount_num ~ description_aggr, data = CandidateDebtSub,
+        log = "y",
+        ylab = "Amount of Debt in Individual Report (log)",
+        las = 2,
+        cex.names = 0.5,
+        cex.axis = 0.5,
+        col = "coral1",
+        border = "coral4")
+title("Distribution of Report Debt Amount by Description",
+      cex.main = 1)
 ```
 
 #### 4. Analysis of Secondary Effects
