@@ -1,0 +1,121 @@
+'hola amor'
+bos.dat = 'sdfs'
+bos
+bos.dat
+?Normal
+set.seed(898)
+x = seq(-3, 3, 0.01)
+head(x)
+dnorm(0)
+dnorm(0,1,1)
+help(dnorm)
+plot(x, dnorm(x), type='l')
+help(pnorm)
+pnorm(0)
+pnorm(1.96)
+pnorm(2)
+plot(x, pnorm(x), type='l')
+qnorm(0.5)
+qnorm(0.975)
+rnorm(1)
+hist(rnorm(100), breaks=20)
+hist(rnorm(9999), breaks=20)
+hist(rnorm(9999), breaks=50)
+?Uniform
+plot(x, punif(x))
+hist(runif(1000), breaks=50)
+hist(runif(100))
+hist(runif(10000), breaks=20, main='Title')
+hist(rnorm(9999), breaks=50)
+plot(x, punif(x))
+help(punif)
+continous1 = function(x) {}
+continous1 = function(x) { x }
+continous1(10)
+continuous2 = function(x) { 2 - x }
+x = 3
+x ^ 2
+x = seq(-3, 3, 0.01)#
+pdf = function(x) {#
+  value = 0#
+  if (x >= 0 & x < 1) {#
+    value = x;#
+  } else if (x >= 1 & x < 2) {#
+    value = 2 - x;#
+  }#
+  value#
+}
+plot(x, pdf(x))
+pdf(x)
+T & F
+T && F
+domain = seq(-3, 3, 0.01)#
+pdf = function(x) {#
+  value = 0#
+  if (x >= 0 & x < 1) {#
+    value = x;#
+  } else if (x >= 1 & x < 2) {#
+    value = 2 - x;#
+  }#
+  value#
+}
+pdf(domain)
+domain = seq(-3, 3, 0.01)#
+pdf = function(x) {#
+  value = 0#
+  ifelse (x >= 0 & x < 1) {#
+    value = x;#
+  } else if (x >= 1 & x < 2) {#
+    value = 2 - x;#
+  }#
+  value#
+}#
+PDF = Vectorize(pdf)
+PDF(domain)
+plot(x, PDF(domain), main='Probability Density Function')
+library(dplyr)
+install.packages('dplyr')
+library(dplyr)
+setcwd
+set_cwd
+setwd('~/Code/mids/203/W203-6-Lab1/Working_files')
+CandidateDebt <- read.csv("CandidateDebt.csv", #
+                          stringsAsFactors = FALSE)
+str(CandidateDebt)
+table(CandidateDebt$originid)
+table(CandidateDebt$origin)
+table(CandidateDebt$amount)
+weeksindebt = round(difftime(max(CandidateDebtSub$debtdate), CandidateDebtSub$debtdate, units = "weeks"))
+var_names <- colnames(read.csv("CandidateDebt.csv", nrows = 1))
+# insert column after "position" and remove last column#
+var_names_corrected <- c(var_names[1:grep("position", var_names)],#
+                         "position2",#
+                         var_names[(grep("position", var_names) + 1):(length(var_names) - 1)])
+# reading the data with correct headers#
+CandidateDebt <- read.csv("CandidateDebt.csv", #
+                          stringsAsFactors = FALSE,#
+                          col.names = var_names_corrected)#
+rm(list = c("var_names", "var_names_corrected"))
+CandidateDebt$amount_num <- as.numeric(CandidateDebt$amount)#
+summary(CandidateDebt$amount_num)
+CandidateDebt$missing_amount <- ifelse(is.na(CandidateDebt$amount_num), 1, 0)#
+table(CandidateDebt$missing_amount)
+CandidateDebt$fromdate <- as.Date(CandidateDebt$fromdate, format = "%m/%d/%y")#
+CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%y")#
+CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%y")
+# creating a vector of variables to keep for analysis#
+keep_vars <- c("reportnumber", "filerid", "filername", "office", "legislativedistrict",#
+    "party", "jurisdiction", "jurisdictioncounty", "jurisdictiontype",#
+    "amount_num", "fromdate", "thrudate", "debtdate", "code", "description",#
+    "vendorname", "vendoraddress","vendorcity", "vendorstate")#
+#
+# removing 56 rows with missing data#
+CandidateDebtSub <- CandidateDebt[CandidateDebt$missing_amount == 0,]#
+CandidateDebtSub <- CandidateDebtSub[keep_vars]#
+rm(keep_vars)
+summary(CandidateDebtSub$debtdate)#
+summary(CandidateDebtSub$fromdate)#
+summary(CandidateDebtSub$thrudate)
+weeksindebt <- #
+  round(difftime(max(CandidateDebtSub$debtdate), CandidateDebtSub$debtdate, units = "weeks"))
+library(opts)

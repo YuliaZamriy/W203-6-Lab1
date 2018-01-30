@@ -6,6 +6,8 @@ output:
   pdf_document: default
   html_document: default
 geometry: margin=1in
+header-includes:
+  - \usepackage{tilting}
 ---
 
 ```{r setup, include=FALSE}
@@ -333,16 +335,16 @@ This chart above goes to show how the frequency of the distribution amount may o
 ```{r}
 sum(subset(CandidateDebtSub, amount_num < 500)$amount_num) / total_spent
 sum(subset(CandidateDebtSub, amount_num >= 5000)$amount_num) / total_spent
-sum(CandidateDebtSub$amount_num == 5000)
+sum(CandidateDebtSub$amount_num == 5070.14)
 sum(subset(CandidateDebtSub, amount_num >= 19000)$amount_num) / total_spent
-sum(CandidateDebtSub$amount_num == 5000)
+sum(CandidateDebtSub$amount_num == 19000)
 ```
 
 While, just about 2/3 of the reported transaction amounts were under $500, those transactions only amounted to about 12% of the total spent.
 
 Conversely, those transactions over $5,000 (over a full standard deviation above the mean of the distrubtion) and $19,000 accounted for 62% and 11%, respectively, of all money spent.
 
-Curiously, we also see that eight of these reported amounts were for $19,000 exactly and 121 were for $5,000. One would wonder if these amounts were related to a particular vendor-service or if there were financial disincentives to breach these marks.
+Curiously, we also see that eight of these reported amounts were for $19,000 exactly and 84 were for $5,070.14. One would wonder if these amounts were related to a particular vendor-service or if there were financial disincentives to breach these marks.
 
 
 ### 2.b Office sought by candidate
@@ -400,7 +402,7 @@ While the code field required little pre-processing, its value was limited due t
 * mail
 * date, technology, and ads.
 
-Note that these are in no way comprehensive or comprehensive. We grouped transactions into these categories by searching for keywords within the transaction description,. We included this rudimentary analysis in order to see if there were any obvious trends. Any sort of inferential analysis would have to more thoroughly research these categories and perhaps use more sophisticated text searching.
+Note that these are in no way comprehensive or mutually exclusive. We grouped transactions into these categories by searching for keywords within the transaction description. We included this rudimentary analysis in order to see if there were any obvious trends. Any sort of inferential analysis would have to more thoroughly research these categories and perhaps use more sophisticated text searching.
 
 
 ```{r}
@@ -484,26 +486,9 @@ axis(1, at = seq(0, 300, 50),
 title('Number of Debt Filings by Debt Description (Derived)',
       cex.main = 0.7)
 
-#par(mar=c(4,12,4,4))
-barplot(aggr_descr$amount_num,
-        names.arg = aggr_descr$description_aggr,
-        horiz = TRUE,
-        las = 2,
-        cex.names=0.5,
-        axes = FALSE,
-        col='coral1',
-        border=NA)
-axis(1, at = seq(0, 800000, 100000),
-     cex.axis = 0.6,
-     labels = seq(0, 800, 100),
-     las = 1)
-title('Total Debt Amount By Debt Description in $000 (Derived)',
-      cex.main = 0.7)
-rm(aggr_descr)
-
 ```
 
-While it appears that there was a high volume of transactions that we categorized as swag (ie campaign materials), there were also a high number of treasury and consulting transactions, which we would suspect, while lower volume are higher in transacted amount. That is indeed what we observe above.
+While it appears that there was a high volume of transactions that we categorized as swag (ie campaign materials), there were also a high number of treasury and consulting transactions, which we would suspect. We will explore this relation to transaction amount in the upcoming section.
 
 
 ### 2.e Vendor name
@@ -555,7 +540,7 @@ barplot(table(sort(format(CandidateDebtSub$debtdate, format="%Y-%m"))),
 ```
 
 These charts show us the following:
-1. Reported spending ramped up until August 2012.
+1. Reporting frequency peaded spend in July 2012 and ended August 2012.
 2. There were no clear trends for any month year-to-year.
 3. Overall, spending increased year-to-year from 2008 to 2012.
 
@@ -650,6 +635,8 @@ title("Debt Accumulation Before Election",
 rm(aggr_months)
 ```
 
+This provides a different picture of the timing of the spending. While the univariate analysis suggested that the number of transactions picked up in July 2012, this analysis show that, in fact, the total transaction volume actually peaked six months before the election.
+
 ### 3.3 Debt Type
 
 One of the key questions we tried to investigate was how candidates spent campaing money. This was captured in the description variable. We aggregated it into fewer groups for analysis purposes.
@@ -660,21 +647,6 @@ We can see from the first chart below, that most of the reports were related to 
 
 aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
 aggr_descr <- aggr_descr[order(aggr_descr$amount_num),]
-
-par(mar=c(2,7,2,2),
-    mfrow=c(2,1))
-barplot(sort(table(CandidateDebtSub$description_aggr)),
-        horiz = TRUE,
-        las = 2,
-        cex.names=0.5,
-        col='coral1',
-        border=NA,
-        axes = FALSE)
-axis(1, at = seq(0, 300, 50),
-     cex.axis = 0.6,
-     las = 1)
-title('Number of Debt Filings by Debt Description (Derived)',
-      cex.main = 0.7)
 
 #par(mar=c(4,12,4,4))
 barplot(aggr_descr$amount_num,
@@ -695,8 +667,7 @@ rm(aggr_descr)
 
 ```
 
-In order to analyze the distribution of debt amount by description group, we decided to log our amount variable. Otherwise, it was hard to see any patterns.
-The boxplot below shows that consulting expectedly had the highest mean (after carry forward), but it is interesting to note how small Q1-Q3 range is (with a lot of outliers). It is due to the fact that a lot of the reports in this category had exactly the same amount. According to the report, a lot of candidates were paying the same amount of money to the same vendor for the same service. Is it a clerical error? Or is it some standard service that candidates require during campaigns? We would need to interview campaign managers and the consulting firm to investigate.
+In order to analyze the distribution of debt amount by description group, we decided to log our amount variable. Otherwise, it was hard to see any patterns. The boxplot below shows that consulting expectedly had the highest mean (after carry forward), but it is interesting to note how small Q1-Q3 range is (with a lot of outliers). It is due to the fact that a lot of the reports in this category had exactly the same amount.
 
 ```{r}
 aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
@@ -716,6 +687,22 @@ boxplot(amount_num ~ description_aggr, data = CandidateDebtSub,
 title("Distribution of Report Debt Amount by Description",
       cex.main = 1)
 ```
+
+Looking back at our univariate analysis, we recall that there were 84 transactions made of $5070.14 and eight of $19,000. It becomes clear that these expenditures were related to a specific vendor consulting service.
+
+```{r}
+table(subset(CandidateDebtSub, amount_num == 5070.14)$vendorname)
+table(subset(CandidateDebtSub, amount_num == 19000)$vendorname)
+table(subset(CandidateDebtSub, amount_num == 5070.14)$description_aggr)
+table(subset(CandidateDebtSub, amount_num == 19000)$description_aggr)
+```
+
+```{r}
+vendor_revenue = aggregate(CandidateDebtSub$amount_num, by=list(vendorname=CandidateDebtSub$vendorname), FUN=sum)
+head(setNames(vendor_revenue[with(vendor_revenue, order(-x)), ], c('Vendor Name', 'Total Revenue')), 5)
+```
+
+Indeed, we see that these two vendors were the largest revenue generators, as they accounted for 32% and 11% of the total amount reportedly spent by candidates.
 
 #### 4. Analysis of Secondary Effects
 
@@ -907,14 +894,20 @@ rm(list = c("aggr_descr0", "aggr_descr", "aggr_descr_office", "aggr_descr_office
 
 ### 5 Conclusion
 
+Several important high level observations can be made about this data:
+* Candidates spend the most amout of their money on consulting, though the make frequent swag (ie campagin material) purchases.
+* Somewhat ironically, a substantial fraction of the amount spent was spent on the same consultancies, likely for the same services, HIRSCHBERG STRATEGIES INC. and NEW PARTNERS CONSULTING INC., which together accounted for over 43% of all money spent. Their services were priced high at $5070.14 and $19,000, collectively.
+* Spending patterns over the year and full campaign cycle is hard to predict on a month by month basis, however, spending clearly ramps up the year of an election.
+* Predictably, the highest number of candidates run for state senate and representative positions.
+* The highest spenders per candidate were for public lands commissioner, state treasurer, and appeals court judge, in descending order. 
+* The offices that were responsible for the highest transaction volume were state representative and county commissioner.
+* Reported spending frequency was skewed towards low transaction amounts, while total transaction volume was skewed towards high transaction amounts. Over 60% of transaction volume was from expenditures over $5,000. This demonstrates that a small fraction of the candidates are spending the majority of the money.
+
+While we were able to identify these simple, high level observations, our analysis was significantly constrained by the some inconsistencies and shortcomings in the data. In order to improve our analysis in the future, we recommend the following improved practices:
+* Force Consistency at Capture Point: Given the multiple unique values per candidate per cyclce for things like 'party,' we recommend a data capture strategy that forces consistency.  If a candidate has debt filings with disputing values, we should address the discrepancy directly with the candidate and ask them for clarification.
+* Audit of Existing Data: Any other historical data related to candidate debt should be audited for consistency and quality to make sure it doesn't also suffer from the same consistency problems.
+* We would like to datasets that extend beyond a single election cycle in order to be able to discern consistencies, discrepancies, and trends between them.
+* The dataset should include a comprehensive list of candidates, even those that have not filed debt reports. This data may fill gaps in other variables, such as party affiliation, and point to important patters related to candidates that do and do not comply with these transparency efforts.
+* Last and perhaps most importantly, the data set should provide a significant variable of interest - election outcome. These will enable us to look at how spending and specific vendors influence election outcomes.
 
 
-1.  Force Consistency at Capture Point: Given the multiple unique values per candidate per cyclce for things like 'party,' we recommend a data capture strategy that forces consistency.  If a candidate has debt filings with disputing values, the system/process/employee should force a rejection so that the discrepancy is addressed at the point of capture.
-2.  Audit of Existing Data: Any other historical data related to candidate debt should be audited for consistency and quality to make sure it doesn't also suffer from the same consistency problems.
-
-
-we should make a suggestion to collect data against multiple campaigns
-[11:57 PM]
-that would add data points and tell us if what we see is systematic across campaigns or random
-[11:58 PM]
-also, we should point somewhere (maybe it's already in the intro section), that we have data for candidates that filed debt reports. but were there any candidates without debt?
