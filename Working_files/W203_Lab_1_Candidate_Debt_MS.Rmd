@@ -2,7 +2,7 @@
 title: 'W203 Lab 1: Candidate Debt EDA'
 author: "Yulia and Mitch"
 date: \today
-geometry: margin = 2cm
+geometry: margin = 1in
 output: pdf_document
 ---
 
