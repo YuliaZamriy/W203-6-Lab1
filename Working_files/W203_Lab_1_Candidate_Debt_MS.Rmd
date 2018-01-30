@@ -8,7 +8,7 @@ geometry: margin=1in
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=TRUE, message=FALSE, tidy=TRUE, strip.white = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, tidy=TRUE, strip.white = TRUE)
 ```
 
 #### 1. Introduction
@@ -174,9 +174,10 @@ colnames(aggr_comb) <- c("filerid", "office", "legislativedistrict", "party", "j
                          "jurisdictioncounty", "jurisdictiontype")
 rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc", "aggr_jurt"))
 
-#sapply(aggr_comb[, -1], table)
+#knitr::kable(summary(aggr_comb[, -1]), caption = "Table with kable")
 summary(aggr_comb[, -1])
 ```
+
 
 The results of this preliminary analysis are not encouraging, and indicate that several fields that would otherwise be of interest to us are not completely accurate. More specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset.  Given that candidates can only have one value for each of these in a given election cycle, this suggests that some or all of the values contained in these columns is not reliable.  To avoid making recommendations on inaccurate data, this analysis will exclude these variables, and provide guidance for how the [CLINT] can best improve data quality moving forward.  
 
@@ -307,17 +308,7 @@ table(CandidateDebtSub$description_aggr)
 #table(CandidateDebtSub$description[CandidateDebtSub$description_aggr == "OTHER"])
 ```
 
-```{r}
-aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
-aggr_descr[order(-aggr_descr$amount_num),]
-rm(aggr_descr)
-```
-
 Now we are ready to explore!
-
-```{r}
-save(CandidateDebtSub, file = "CandidateDebtSub.RData")
-```
 
 #### 2. Univariate Analysis
 
@@ -333,38 +324,55 @@ Univariate analysis was conducted on the variables that were not determined to h
 ### 2.1 Univariate Analysis - Amount
 
 ```{r}
+summary(CandidateDebtSub$amount_num)
+```
+
+```{r}
 # Amount
-summary(CandidateDebtSub$amount)
-hist(CandidateDebtSub$amount, breaks=50, main = 'Frequency of Debt Filing by Debt Amount', col='coral1', border=NA, xlab = 'Debt Amount ($)')
-#DF <- data.frame(CandidateDebt)
-#DT <- data.table(CandidateDebt)
-#DFmax <- DF[DF$amount == 19000,]
-#table(DFmax$party)
-#table(DFmax$office)
-# there are 8 filings of 19000, all from different democrats, running for numerous offices all to the same firm (New Partners consulting)
+
+hist(CandidateDebtSub$amount, 
+     breaks=50, 
+     main = 'Frequency of Debt Filing by Debt Amount', 
+     col='coral1', 
+     border=NA, 
+     xlim = range(0:20000),
+     xaxt = "n",
+     xlab = 'Debt Amount ($)')
+axis(1, at = seq(0, 20000, 2000),
+     labels = seq(0, 20000, 2000),
+     cex.axis = 0.8)
 ```
 
 The amounts associated with each filing are between $3.24 and $19,000, with the majority being less than $500.    
-
 ```{r}
-
+CandidateDebtSub[CandidateDebtSub$amount_num >= 19000, c("office", "amount_num", "description")]
 ```
+
 
 There are two notable observations when looking at a histogram of the variable: the outlier group of 8 filings of $19,000, and the large cluster of amounts just over $5,000.
 
 
 ### 2.2 Univariate Analysis - Office
 
+### YZ: this chart needs a legend
+
 ```{r}
 #tabOfficeDF <- as.data.frame(table(CandidateDebtSub$office))
 #tabOfficeDF[order(tabOfficeDF$Freq, decreasing = T),]
 #officeDF <- as.data.frame(table(CandidateDebtSub$office))
 par(mar=c(4,15,4,5))
-y = barplot(sort(table(CandidateDebtSub$office)), horiz=TRUE, las = 2, col='coral1', 
-            main = 'Number of Debt Filings by Political Office of Candidate',border=NA)
+y = barplot(sort(table(CandidateDebtSub$office)), 
+            horiz=TRUE, 
+            las = 1, 
+            cex.names = 0.5,
+            col='coral1', 
+            main = 'Number of Debt Filings by Political Office of Candidate',
+            border=NA)
 x = rev(c(520, 264, 27, 6,6, 1000, 49, 6,6, 210, 210, 1000,6, 16, 6, 134 ))
-points(x,y,col='coral4',pch=16, cex=1)
-sort(table(CandidateDebtSub$office))
+points(x, y, col='coral4', pch=16, cex=1)
+
+rm(list = c("x","y"))
+#sort(table(CandidateDebtSub$office))
 ```
 
 
@@ -374,9 +382,9 @@ The vast majority of filings in the existing dataset are from respondents runnin
 
 ```{r}
 table(CandidateDebtSub$vendorstate)
-par(mar=c(4,15,4,4))
-barplot(sort(table(CandidateDebtSub$vendorstate),decreasing=T), 
-        main = 'Number of Debt Filings by State of Debt Holder', xlab = 'State',ylab = 'Frequency', col='coral1', border=NA)
+# par(mar=c(4,15,4,4))
+# barplot(sort(table(CandidateDebtSub$vendorstate),decreasing=T), 
+#         main = 'Number of Debt Filings by State of Debt Holder', xlab = 'State',ylab = 'Frequency', col='coral1', border=NA)
 ```
 
 It appears there are 25 values for which there is no listed State for the deb holder.  Looking at those values, they all appear to be associated with Credit Card debt.
@@ -385,39 +393,85 @@ It appears there are 25 values for which there is no listed State for the deb ho
 DF <- as.data.frame(CandidateDebtSub)
 table(DF$vendorname[DF$vendorstate == ''])
 ```
+### YZ: Maybe for the below we need table only
 
 ```{r}
-#summary(CandidateDebtSub$vendorcity)
-par(mar=c(2.5,7,4,4))
-barplot(sort(table(CandidateDebtSub$vendorcity)), horiz = TRUE,las = 2, cex.names=0.6, 
-        main = 'Number of Debt Filings by City of Debt Holder', xlab = 'State', col='coral1', border=NA)
+table(CandidateDebtSub$vendorcity)
+# par(mar=c(2.5,7,4,4))
+# barplot(sort(table(CandidateDebtSub$vendorcity)), 
+#         horiz = TRUE,
+#         las = 2, 
+#         cex.names=0.6, 
+#         main = 'Number of Debt Filings by City of Debt Holder', 
+#         xlab = 'State', 
+#         col='coral1', 
+#         border=NA)
 ```
 
 ### 2.4 Univariate Analysis - Code
 
 ```{r}
 # Code
-par(mar=c(4,12,4,4))
 table(CandidateDebtSub$code)
-barplot(sort(table(CandidateDebtSub$code)), horiz = TRUE,las = 2, cex.names=1, main = 'Number of Debt Filings by Type of Debt (Code)', xlab = 'State', col='coral1', border=NA)
+#par(mar=c(4,12,4,4))
+# barplot(sort(table(CandidateDebtSub$code)), horiz = TRUE,las = 2, cex.names=1, main = 'Number of Debt # Filings by Type of Debt (Code)', xlab = 'State', col='coral1', border=NA)
 ```
 
 ### 2.5 Univariate Analysis - description_aggr
 
+### YZ: We should fit the following two charts next to each other
 
 ```{r}
 # description_aggr
+#table(CandidateDebtSub$description_aggr)
+
 par(mar=c(4,12,4,4))
-table(CandidateDebtSub$description_aggr)
-barplot(sort(table(CandidateDebtSub$description_aggr)), horiz = TRUE,las = 2, cex.names=1, main = 'Number of Debt Filings by Type of Debt (Derived)', xlab = 'State', col='coral1', border=NA)
+barplot(sort(table(CandidateDebtSub$description_aggr)), 
+        horiz = TRUE,
+        las = 2, 
+        cex.names=0.8, 
+        main = 'Number of Debt Filings by Debt Description (Derived)', 
+        xlab = 'Number of Debt Filings', 
+        col='coral1', 
+        border=NA)
+```
+
+```{r}
+aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
+aggr_descr <- aggr_descr[order(aggr_descr$amount_num),]
+
+par(mar=c(4,12,4,4))
+barplot(aggr_descr$amount_num, 
+        names.arg = aggr_descr$description_aggr,
+        horiz = TRUE,
+        las = 2, 
+        cex.names=0.8, 
+        main = 'Total Debt Amount By Debt Description (Derived)', 
+        xlab = "Debt Amount ($ '000)", 
+        axes = FALSE,
+        col='coral1', 
+        border=NA)
+axis(1, at = seq(0, 800000, 100000),
+     cex.axis = 0.6,
+     labels = seq(0, 800, 100),
+     las = 1)
+rm(aggr_descr)
+
 ```
 
 ### 2.6 Univariate Analysis - Vendor
 
 ```{r}
 par(mar=c(4,15,4,4))
-vendorTable <- sort(table(CandidateDebtSub$vendorname),decreasing = T)
-barplot(sort(vendorTable[1:15]), horiz = TRUE,las = 2, cex.names=1, main = 'Number of Debt Filings by Vendor', xlab = 'State', col='coral1', border=NA)
+vendorTable <- sort(table(CandidateDebtSub$vendorname),decreasing = TRUE)
+barplot(sort(vendorTable[1:15]), 
+        horiz = TRUE,
+        las = 2, 
+        cex.names=0.8, 
+        main = 'Number of Debt Filings by Vendor', 
+        xlab = 'Number of Debt Filings', 
+        col='coral1', 
+        border=NA)
 ```
 
 #### 3. Analysis of Key Relationships
