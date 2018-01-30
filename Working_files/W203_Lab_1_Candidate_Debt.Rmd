@@ -3,8 +3,8 @@ title: 'W203 Lab 1: Candidate Debt EDA'
 author: "Eric Hulburd, Mitch Stepleton, Yulia Zamriy"
 date: "\today"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 geometry: margin=1in
 ---
 
@@ -17,11 +17,12 @@ knitr::opts_chunk$set(echo = TRUE, warning=TRUE, message=FALSE, tidy=TRUE, strip
 
 As members of the Washington State Election Commission, it is our responsibility to ensure that all elections that occur within the State are free, fair, and transparent.  It seems that now, more than ever, a clear understanding of how campagins are financed is necessary to meet the commissions responsibilities.    To that end, we have been asked to perform an exploratory analysis of debt filing data from the prior year.  The goal of this exploratory analysis is to better understand how campaign characteristics are related to the financial debts of candidates.
 
-The analysis is broken into the following 5 secions, with findings and recommendations contained in the conclusion:
+The analysis is broken into the following 5 sections, with findings and recommendations contained in the conclusion:
 
 1. **Introduction**
     a. Loading the Data
     b. Describing the Data
+        i. Making use of date fields
     c. Evaluating and Addressing Data Quality
         i. Addressing #N/A Values
         ii. Removing Unnecessary Columns
@@ -41,7 +42,7 @@ The analysis is broken into the following 5 secions, with findings and recommend
     b. Composition of Debt by Office & Description
 5. **Conclusion**
 
-### a. Loading Data
+### 1.a. Loading Data
 
 ```{r}
 CandidateDebt <- read.csv("CandidateDebt.csv",
@@ -72,7 +73,7 @@ CandidateDebt <- read.csv("CandidateDebt.csv",
 rm(list = c("var_names", "var_names_corrected"))
 ```
 
-### b. Exploring rows with missing debt data
+### 1.b. Exploring rows with missing debt data
 
 The relabeled dataset consisted of 1,043 rows, and 28 columns.  Though all columns were initially formatted as character strings, conceptually the data contains:
 
@@ -121,9 +122,11 @@ CandidateDebt$amount_num <- as.numeric(CandidateDebt$amount)
 summary(CandidateDebt$amount_num)
 ```
 
-### c. Evaluating and Addressing Data Quality
+#### 1.b.i
 
-#### i. Addressing #N/A Values
+### 1.c. Evaluating and Addressing Data Quality
+
+#### 1.c.i. Addressing #N/A Values
 
 Preliminary analysis revealed 56 rows for which the amount variable as '#N/A':
 
@@ -159,7 +162,7 @@ CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%y")
 CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%y")
 ```
 
-#### ii. Removing Unnecessary Columns
+#### 1.c.ii. Removing Unnecessary Columns
 
 
 With basic scrubbing and and recasting of variables completed, our next step was to compose the dataset that would be used for the analysis.  Several of the variables within the dataset contained information that were either redundent or unnecessary and as such were removed to make the dataset easier to work with.
@@ -198,7 +201,7 @@ summary(CandidateDebtSub)
 sum(is.na(CandidateDebtSub))
 ```
 
-#### iii. Testing Variable Consistency
+#### 1.c.iii. Testing Variable Consistency
 
 Using the trimmed dataset, we performed additional quality checks on variables of interest looking for anything notable or out of the ordinary.  Specifically, for each variable, we counted the distinct values it had in the dataset per candidate.  Given that this data is only for a single election cycle, we would expect values such as **party**, **office**, and **jurisdiction** to only have a single value per candidate.
 
@@ -236,9 +239,7 @@ rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc",
 summary(aggr_comb[, -1])
 ```
 
-Unfortunately, this analysis revealed that several fields that would otherwise be of interest to us contain values that are most likely inaccurate. More specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset.  Given that candidates can only have one value for each of these in a given election cycle, this suggests that some or all of the values contained in these columns is not reliable.  To avoid making recommendations on inaccurate data, this analysis will exclude these variables, and provide guidance for improving data capture and quality moving forward.
-
-MITCH NOTE: I recommend we remove the below code on row-wise analysis through the extra variable section.  Column-wise exlusion makes a lot more sense IMHO.
+Unfortunately, this analysis revealed that several fields otherwise of interest to us contain values that are most likely inaccurate. Specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset. Unsure of whether these instances represented an inaccuracy in data reporting and collection, or whether many of these candidates were running simultaneous campaigns, we decided to simplify the data set and focus solely on fields that did not suggest the possibility of inaccurate candidate identification or multiple campaigns within the same season. We, therefore, will exclude these variables specified below and provide guidance for improving data capture and quality moving forward.
 
 ```{r}
 # creating flag variables for candidates with more than 1 unique value
@@ -271,154 +272,136 @@ table(aggr_party$office, aggr_party$party)
 rm(aggr_party)
 ```
 
-Based on the above, only "State Prepresentative" and "Superior Court Judge" had representatives of two major parties.This is suspect.
-Hence, we will eclude the following 5 variables from the analysis: *legislativedistrict*, *party*, *jurisdiction*, *jurisdictioncounty*, *jurisdictiontype*
+Based on the above, only "State Prepresentative" and "Superior Court Judge" were the only offices that had representatives of two major parties. This suggests that the sample was limited in its political party representation. We will, therefore, exclude the following 5 variables from the analysis:
 
-### 1.3 Creating analytic dataset
+* legislativedistrict,
+* party,
+* jurisdiction,
+* jurisdictioncounty, and
+* jurisdictiontype.
 
-Exlcude variables:
+## 2. Univariate Analysis
 
-- origin (one value = B.3)
+We conducted univariate analyses on the variables we believed we could reliably explore as discussed above. The objective of this subset of analysis is to better understand the distribution of each variable and to identify specific variables that may be informative in a bivariate analysis. As suggested above, we will focus on the following raw variables from the dataset:
+a. amount of debt incurred
+b. office sought by candidate
+c. vendor city and state
+d. transaction type and description
+e. vendor name
+f. transaction and report dates.
 
-- filertype (one value = Candidate)
+### 2.a Amount of debt incurred
 
-- filername, firstname, middleinitial, lastname (will use filerid as a candidate identifier)
-
-- position and position2 (values are not clear and were messed up in raw data)
-
-- electionyear (one value = 2012)
-
-- recordtype (one value = DEBT)
-
-```{r}
-# creating a vector of variables to keep for analysis
-keep_vars <- c("reportnumber", "filerid", "filername", "office", "legislativedistrict",
-    "party", "jurisdiction", "jurisdictioncounty", "jurisdictiontype",
-    "amount_num", "fromdate", "thrudate", "debtdate", "code", "description",
-    "vendorname", "vendoraddress","vendorcity", "vendorstate")
-
-# removing 56 rows with missing data
-CandidateDebtSub <- CandidateDebt[CandidateDebt$missing_amount == 0,]
-CandidateDebtSub <- CandidateDebtSub[keep_vars]
-rm(keep_vars)
-```
-
-Looking at main analytic dataset:
+The amount in our dataset is the transacted amount or amount of debt incurred by the candidate on a particular occassion. This dataset can give us insight into the distribution of the quantities candidates report to spend. For this analysis, we use the pre-processed `amount_num` field which has properly been parsed for numeric analysis.
 
 ```{r}
-summary(CandidateDebtSub)
+summary(CandidateDebtSub$amount_num)
+sd(CandidateDebtSub$amount_num)
 ```
 
-```{r}
-# checking for presense of missing values
-sum(is.na(CandidateDebtSub))
-```
+As evidenced above, there is a broad range of transactions reported by candidates - from $3.24-$19,000. While $19,000 is a large sum, it is fortunately more on the order of a hefty consulting fee rather than a new Porsche or vacation home in the Bahamas.
 
-### 1.4 Evaluating data quality
-
-Calculating number of unique values per candidate for campaign related variable
-
-```{r}
-aggr_office <- aggregate(amount_num ~ filerid + office, data = CandidateDebtSub, sum)
-aggr_office <- aggregate(office ~ filerid, data = aggr_office, length)
-
-aggr_legdis <- aggregate(amount_num ~ filerid + legislativedistrict, data = CandidateDebtSub, sum)
-aggr_legdis <- aggregate(legislativedistrict ~ filerid, data = aggr_legdis, length)
-
-aggr_party <- aggregate(amount_num ~ filerid + party, data = CandidateDebtSub, sum)
-aggr_party <- aggregate(party ~ filerid, data = aggr_party, length)
-
-aggr_jur <- aggregate(amount_num ~ filerid + jurisdiction, data = CandidateDebtSub, sum)
-aggr_jur <- aggregate(jurisdiction ~ filerid, data = aggr_jur, length)
-
-aggr_jurc <- aggregate(amount_num ~ filerid + jurisdictioncounty, data = CandidateDebtSub, sum)
-aggr_jurc <- aggregate(jurisdictioncounty ~ filerid, data = aggr_jurc, length)
-
-aggr_jurt <- aggregate(amount_num ~ filerid + jurisdictiontype, data = CandidateDebtSub, sum)
-aggr_jurt <- aggregate(jurisdictiontype ~ filerid, data = aggr_jurt, length)
-
-aggr_comb <- cbind(aggr_office,
-                   aggr_legdis[,2],
-                   aggr_party[,2],
-                   aggr_jur[,2],
-                   aggr_jurc[,2],
-                   aggr_jurt[,2])
-
-colnames(aggr_comb) <- c("filerid", "office", "legislativedistrict", "party", "jurisdiction",
-                         "jurisdictioncounty", "jurisdictiontype")
-rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc", "aggr_jurt"))
-
-#knitr::kable(summary(aggr_comb[, -1]), caption = "Table with kable")
-summary(aggr_comb[, -1])
-```
-
-The results of this preliminary analysis are not encouraging, and indicate that several fields that would otherwise be of interest to us are not completely accurate. More specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset.  Given that candidates can only have one value for each of these in a given election cycle, this suggests that some or all of the values contained in these columns is not reliable.  To avoid making recommendations on inaccurate data, this analysis will exclude these variables, and provide guidance for how the [CLINT] can best improve data quality moving forward.
-
----Based on the above, we think all but *office* variables are unreliable
-
-```{r}
-# creating flag variables for candidates with more than 1 unique value
-aggr_comb$legdist_mult <- ifelse(aggr_comb$legislativedistrict > 1, 1, 0)
-aggr_comb$party_mult <- ifelse(aggr_comb$party > 1, 1, 0)
-aggr_comb$jur_mult <- ifelse(aggr_comb$jurisdiction > 1, 1, 0)
-aggr_comb$jurc_mult <- ifelse(aggr_comb$jurisdictioncounty > 1, 1, 0)
-aggr_comb$jurt_mult <- ifelse(aggr_comb$jurisdictiontype > 1, 1, 0)
-aggr_comb$mult <- aggr_comb$legdist_mult + aggr_comb$party_mult + aggr_comb$jur_mult +
-  aggr_comb$jurc_mult + aggr_comb$jurt_mult
-table(aggr_comb$mult)
-```
-
-Only 34 candidates with "clean" data
-
-```{r}
-# adding this flag variable to the main data set
-CandidateDebtSub <- merge(CandidateDebtSub, aggr_comb[, c("filerid", "mult")], by = "filerid")
-rm(aggr_comb)
-```
-
-```{r}
-# counting number of unique offices among those 34 candidates
-length(unique(CandidateDebtSub$office[CandidateDebtSub$mult == 0]))
-```
-```{r}
-# counting number of unique parties/offices among those 34 candidates
-aggr_party <- aggregate(amount_num ~ filerid + party + office, data = CandidateDebtSub[CandidateDebtSub$mult == 0,], sum)
-table(aggr_party$office, aggr_party$party)
-rm(aggr_party)
-```
-
-Based on the above, only "State Prepresentative" and "Superior Court Judge" had representatives of two major parties.This is suspect.
-Hence, we will eclude the following 5 variables from the analysis: *legislativedistrict*, *party*, *jurisdiction*, *jurisdictioncounty*, *jurisdictiontype*
-
-
-
-### 1.5 Creating extra variables
-
-```{r}
-summary(CandidateDebtSub$debtdate)
-summary(CandidateDebtSub$fromdate)
-summary(CandidateDebtSub$thrudate)
-```
-
-Given that financial debts are subject to the time-value of money, it may be useful to include the age of candidate debt in the analysis. Though we do not have access the actual debt age, we can still compare the date of the debt of origination (debtdate) and the thru-date of the period (thrudate) to derive the age of the debt at the time of the filing.  This value is represented by the weeksindebt variable, which is the number of weeks between the debtdate and the thrudate of the filing.  [MITCH NOTE: Looking at the code, I think its looking at the debtdates across filings so the above may not apply.]
+Interestingly, the standard deviation of the debt incurred, $2494.27, is larger than the mean, $1347.43, while the third quartile, $1210.50, is less than the mean. This suggests a highly skewed distribution and, indeed, when we look at the histogram, the distribution is skewed far to the left.
 
 
 ```{r}
-# Number of months before election the debt occured
-CandidateDebtSub$weeksindebt <-
-  round(difftime(max(CandidateDebtSub$debtdate), CandidateDebtSub$debtdate, units = "weeks"))
-CandidateDebtSub$monthsindebt <-
-  round(CandidateDebtSub$weeksindebt / 52 * 12)
-CandidateDebtSub$monthsindebt <-
-  as.numeric(CandidateDebtSub$monthsindebt)
-# capping months at 13 months (for exploratory reasons)
-CandidateDebtSub$monthsindebt_cap <-
-  ifelse(CandidateDebtSub$monthsindebt > 12, 13, CandidateDebtSub$monthsindebt)
-summary(CandidateDebtSub$monthsindebt)
-summary(CandidateDebtSub$monthsindebt_cap)
+# Amount
+
+hist(CandidateDebtSub$amount,
+     breaks=50,
+     main = 'Frequency of Debt Filing by Debt Amount',
+     col='coral1',
+     border=NA,
+     xlim = range(0:20000),
+     xaxt = "n",
+     xlab = 'Debt Amount ($)')
+axis(1, at = seq(0, 20000, 2000),
+     labels = seq(0, 20000, 2000),
+     cex.axis = 0.6)
 ```
 
-The high number of blank values for the code variable reduces its utility in understanding what items or services are associated with candidate debt filings.  Conversely, the description field does not have blanks, but is at a level of granularity that makes it unwieldly for this analysis.  To solve these issues, we created a derived variable that 'buckets' candidate debt into uniform categories based on the filing description.  We acknowledge that there is at least some degree of judgement when making these category determinations so have included the code to be completely transparent.
+Despite the skew towards reported number of smaller transactions, it is interesting to view this in relation to total amount spent by candidates.
+
+```{r}
+total_spent = sum(CandidateDebtSub$amount_num)
+plot(sort(CandidateDebtSub$amount_num), cumsum(sort(CandidateDebtSub$amount_num)) / total_spent, xlab="donation size ($)", ylab="% of total spent", main="Cumulative Spending by Amount")
+
+```
+
+This chart above goes to show how the frequency of the distribution amount may often be deceptive in terms of where most money is being spent by candidates and helps us hone in on the following.
+
+```{r}
+sum(subset(CandidateDebtSub, amount_num < 500)$amount_num) / total_spent
+sum(subset(CandidateDebtSub, amount_num >= 5000)$amount_num) / total_spent
+sum(CandidateDebtSub$amount_num == 5000)
+sum(subset(CandidateDebtSub, amount_num >= 19000)$amount_num) / total_spent
+sum(CandidateDebtSub$amount_num == 5000)
+```
+
+While, just about 2/3 of the reported transaction amounts were under $500, those transactions only amounted to about 12% of the total spent.
+
+Conversely, those transactions over $5,000 (over a full standard deviation above the mean of the distrubtion) and $19,000 accounted for 62% and 11%, respectively, of all money spent.
+
+Curiously, we also see that eight of these reported amounts were for $19,000 exactly and 121 were for $5,000. One would wonder if these amounts were related to a particular vendor-service or if there were financial disincentives to breach these marks.
+
+
+### 2.b Office sought by candidate
+
+```{r}
+par(mar=c(4,8,4,5))
+barplot(sort(table(CandidateDebtSub$office)),
+            horiz=TRUE,
+            las = 1,
+            cex.names = 0.5,
+            xlab='Number of transactions reported',
+            col='coral1',
+            border=NA)
+title('Number of Transactions Reported by Political Office of Candidate',
+      cex.main = 0.8)
+```
+
+As one would suspect the highest number of transactions were reported by candidates for state representative and senator. This, of course, makes sense since there state Congress contains many members. That candidates for the governorship reported the third highest number of transactions suggests (a) it is a popular office to which many people aspire to or (b) candidates spend more frequently on their candidacy. We will need to look at the office relationship with the filerid and transaction amount.
+
+### 2.c Vendor city and state
+
+```{r}
+table(CandidateDebtSub$vendorstate)
+prop.table(table(CandidateDebtSub$vendorstate))
+```
+
+It comes as no surprise that the over 85% of the reported transactions occurred within Washington state where the candidates must campaign and appeal to voters. It should also be no surprise to see that Washington DC, where national political parties run and where lobbyists run wild, that is the second most frequent state of transaction. Some candidates may additionally have ventured out to larger states with political party headquarters for support for their campaign. Looking at the relationships of spending in these states, as well as the office run for, may give some indication as to why some candidates spend more outside the states borders than others.
+
+
+### 2.d Transaction type and description
+
+```{r}
+# Code
+aggr_code <- aggregate(reportnumber ~ code, CandidateDebtSub, length)
+colnames(aggr_code) <- c("Code", "Number of Reports")
+aggr_code[order(-aggr_code$`Number of Reports`),]
+rm(aggr_code)
+```
+
+The analysis of the transaction type was very straightforward. Most of the time, candidates neglected to classify the type of the transaction. The answer to the question "why?" is beyond the scope of this exploratory analysis, however, examining the relationship of the transaction type with the amount may indicate whether entering that information seemed too tedious for small amounts of money or whether candidates were hiding the type of their larger transactions.
+
+While the code field required little pre-processing, its value was limited due to the number of un-filled rows. Conversely, the description field does not have blanks, but is at a level of granularity that makes it unwieldly for this analysis.  To solve these issues, we created a derived variable that 'buckets' candidate debt into uniform categories based on the filing description. We attempted to group the descriptions into the following categories:
+* treasury
+* campaign management
+* fundraising
+* carry forward
+* reimbursement
+* accounting
+* bonus
+* design and print
+* polling
+* credit card
+* consulting
+* swag
+* mail
+* date, technology, and ads.
+
+Note that these are in no way comprehensive or comprehensive. We grouped transactions into these categories by searching for keywords within the transaction description,. We included this rudimentary analysis in order to see if there were any obvious trends. Any sort of inferential analysis would have to more thoroughly research these categories and perhaps use more sophisticated text searching.
+
 
 ```{r}
 creditcard <- c("AM EX", "AMERICAN EXPRESS", "AMERICAN EXPRESS LOWES", "AMEX",
@@ -484,110 +467,193 @@ table(CandidateDebtSub$description_aggr)
 
 ```{r}
 aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
-aggr_descr[order(-aggr_descr$amount_num),]
+aggr_descr <- aggr_descr[order(aggr_descr$amount_num),]
+
+par(mar=c(2,7,2,2),
+    mfrow=c(2,1))
+barplot(sort(table(CandidateDebtSub$description_aggr)),
+        horiz = TRUE,
+        las = 2,
+        cex.names=0.5,
+        col='coral1',
+        border=NA,
+        axes = FALSE)
+axis(1, at = seq(0, 300, 50),
+     cex.axis = 0.6,
+     las = 1)
+title('Number of Debt Filings by Debt Description (Derived)',
+      cex.main = 0.7)
+
+#par(mar=c(4,12,4,4))
+barplot(aggr_descr$amount_num,
+        names.arg = aggr_descr$description_aggr,
+        horiz = TRUE,
+        las = 2,
+        cex.names=0.5,
+        axes = FALSE,
+        col='coral1',
+        border=NA)
+axis(1, at = seq(0, 800000, 100000),
+     cex.axis = 0.6,
+     labels = seq(0, 800, 100),
+     las = 1)
+title('Total Debt Amount By Debt Description in $000 (Derived)',
+      cex.main = 0.7)
 rm(aggr_descr)
+
 ```
 
-Now we are ready to explore!
+While it appears that there was a high volume of transactions that we categorized as swag (ie campaign materials), there were also a high number of treasury and consulting transactions, which we would suspect, while lower volume are higher in transacted amount. That is indeed what we observe above.
+
+
+### 2.e Vendor name
 
 ```{r}
-save(CandidateDebtSub, file = "CandidateDebtSub.RData")
+par(mar=c(4,10,4,4))
+vendorTable <- sort(table(CandidateDebtSub$vendorname),decreasing = TRUE)
+barplot(sort(vendorTable[1:15]),
+        horiz = TRUE,
+        las = 2,
+        cex.names=0.5,
+        cex.axis = 0.8,
+        xlim = range(0:250),
+        axes = FALSE,
+        col='coral1',
+        border=NA)
+axis(1, at = seq(0, 250, 50),
+     cex.axis = 0.6,
+     las = 1)
+title('Number of Debt Filings by Vendor',
+      cex.main = 0.9)
 ```
 
-#### 2. Univariate Analysis
-
-Univariate analysis was conducted on the variables that were not determined to have faulty data.  The objective of this subset of analysis is to better understand the behavior of each variable and to identify specific variables that may be informative in a bivariate analysis.  Specifically, the variables to be examined in this section are:
-- Amount: The amount of the debt incurred or order placed.
-- Office: The office sought by the candidate
-- WeeksinDebt
-- Code:  The type of debt
-- description_aggr (Derived): A derived field categorizing the type of expense of the debt, based on the debt description field
-- weeksindebt (Derived): A derived field showing the length time the debt was held for, based on the debt date and
+Analysis of the vendor name is very straightforward. We simply took a look at the most frequent vendor names so we can use these for further analysis to identify where candidates are spending most of their money and whether these vendors are integrated across a broad spectrum of political services and goods or if they are specialized.
 
 
-### 2.1 Univariate Analysis - Amount
+### 2.f Transaction and report dates
+
+As mentioned in the introduction, we parsed all of the date fields to date. This enables us to get a numberical summary of the timestamps on the transactions.
+
 
 ```{r}
-summary(CandidateDebtSub$amount_num)
+summary(CandidateDebtSub$debtdate)
+summary(CandidateDebtSub$fromdate)
+summary(CandidateDebtSub$thrudate)
 ```
 
-```{r}
-# Amount
-
-hist(CandidateDebtSub$amount,
-     breaks=50,
-     main = 'Frequency of Debt Filing by Debt Amount',
-     col='coral1',
-     border=NA,
-     xlim = range(0:20000),
-     xaxt = "n",
-     xlab = 'Debt Amount ($)')
-axis(1, at = seq(0, 20000, 2000),
-     labels = seq(0, 20000, 2000),
-     cex.axis = 0.6)
-```
-
-The amounts associated with each filing are between $3.24 and $19,000, with the majority being less than $500.
-```{r}
-CandidateDebtSub[CandidateDebtSub$amount_num >= 19000, c("office", "amount_num", "description")]
-```
-
-
-There are two notable observations when looking at a histogram of the variable: the outlier group of 8 filings of $19,000, and the large cluster of amounts just over $5,000.
-
-
-### 2.2 Univariate Analysis - Office
-
-### YZ: this chart needs a legend
+These summaries give us a good indication of the period of time from which the sample data was collected. The data extends from October 2008 until August 2012. Because political are campaigns are, fortunately, not run annually, it is unlikely we would see the same spending patterns year after year. We can run a rudimentary analysis with a histgram to see when most the most frequent months and years were for campaign transactions.
 
 ```{r}
-par(mar=c(4,8,4,5))
-barplot(sort(table(CandidateDebtSub$office)),
-            horiz=TRUE,
+hist(as.numeric(format(CandidateDebtSub$debtdate, format="%Y")), breaks=seq(2007.5, 2012.5, 1), main="Frequency of Campaign Transactions", xlab="Year")
+hist(as.numeric(format(CandidateDebtSub$debtdate, format="%m")), breaks=seq(0.5, 12.5, 1), main="Frequency of Campaign Transactions", xlab="Month")
+barplot(table(sort(format(CandidateDebtSub$debtdate, format="%Y-%m"))),
             las = 1,
             cex.names = 0.5,
+            xlab='Number of transactions reported by month',
             col='coral1',
             border=NA)
-title('Number of Debt Filings by Political Office of Candidate',
-      cex.main = 0.8)
 ```
 
+These charts show us the following:
+1. Reported spending ramped up until August 2012.
+2. There were no clear trends for any month year-to-year.
+3. Overall, spending increased year-to-year from 2008 to 2012.
 
-The vast majority of filings in the existing dataset are from respondents running for or currently serving as State REpresentatives and State Senators.  Given that there are many more seats for those positions, this finding is to be expected.
 
-### 2.3 Univariate Analysis - Vendor State & Vendor City
+#### 3. Analysis of Key Relationships
+
+### 3.1 Number of Candidates and Average Debt per Candidate By Office
+
+As we covered in the earlier sections, the final analytical dataset contains data on 140 candidates that filed debt reports. Based on the first chart in the figure below, almost half of the candidates were running for "State Representative". "County Commissioner", "State Senator" and "Superior Court Judge" offices had between 15 and 20 candidates, while the rest of the offices had less than five. Is it possible that not all candidates accumulated any debt during the eleciton and, hence, don't have a recored in this report? That would be an important piece of information to add to make this analysis more comprehensive.
+Another piece of data required for a complete picture is the number of seats available at each office. We would use it to normalize the metric and understand if there was a disproportionate number of candidates filing debt reports in some offices vs. the others.
+The second chart in the figure below displays average debt per candidates by Office during the election. It is interesting to note that the offices with the highest average debt per candidate (Public Lands Commissioner, State Treasurer and Appeals Court Judge) had the smallest number of candidates in the election (assuming they all filed debt reports). However, we cannot make any conclusions based only on these few data points. Is it just a coincidence? Are the campaigns for these offices more expensive? Or were candidates not able to raise enough money?
 
 ```{r}
-table(CandidateDebtSub$vendorstate)
+aggr_office <- aggregate(amount_num ~ filerid + office, data = CandidateDebtSub, sum)
+aggr_office <- aggregate(filerid ~ office, data = aggr_office, length)
+aggr_office2 <- aggregate(amount_num ~ office, data = CandidateDebtSub, sum)
+aggr_office <- cbind(aggr_office, aggr_office2[,2])
+colnames(aggr_office)[3] <- c("amount_num")
+aggr_office$amount_p_cand <- aggr_office$amount_num / aggr_office$filerid
+
+par(mar = c(8,4,1,0),
+    oma = c(0,0,0,0),
+    mfrow = c(1,2))
+barplot(aggr_office$filerid,
+        names.arg = aggr_office$office,
+        cex.names = 0.5,
+        cex.axis = 0.5,
+        border = NA,
+        las = 2,
+        ylim = range(0, 70),
+        ylab = "Number of Candidates",
+        col = "coral1")
+title("Number of Candidates That Filed Debt Forms (by Office)",
+      cex.main = 0.5)
+
+par(mar = c(8,4,1,0))
+barplot(aggr_office$amount_p_cand,
+        names.arg = aggr_office$office,
+        cex.names = 0.5,
+        cex.axis = 0.5,
+        border = NA,
+        las = 2,
+        ylab = "Average Debt ($)",
+        col = "coral4")
+title("Average Debt Per Candidate (by Office)",
+      cex.main = 0.5)
+rm(list = c("aggr_office", "aggr_office2"))
+
 ```
 
-It appears there are 25 values for which there is no listed State for the deb holder.  Looking at those values, they all appear to be associated with Credit Card debt.
+
+### 3.2 Timing Analysis of the Debt
+
+Let's take a look on how debt occured in the months leading to the election (across all candidates and all offices).
+Overall, the first debt report available in the file was dated 46 months prior to the election. However, debt amounts were relatively small until 7 months prior to the election (with two exceptions of 18 and 14 months). Moreover, the largest amount of debt in the entire campaign happened 6 months before the election. We would need to investigate why that was. Were there certain events in the campaign calendar that required significant spend at that time? Or was it a consequence of individual candidates spending patterns? One of the ways to approach this question would be to compare this patter across multiple campaigns.
 
 ```{r}
-DF <- as.data.frame(CandidateDebtSub)
-table(DF$vendorname[DF$vendorstate == ''])
-rm(DF)
+
+# Number of months before election the debt occured
+CandidateDebtSub$weeksindebt <-
+  round(difftime(max(CandidateDebtSub$debtdate), CandidateDebtSub$debtdate, units = "weeks"))
+CandidateDebtSub$monthsindebt <-
+  round(CandidateDebtSub$weeksindebt / 52 * 12)
+CandidateDebtSub$monthsindebt <-
+  as.numeric(CandidateDebtSub$monthsindebt)
+# capping months at 13 months (for exploratory reasons)
+CandidateDebtSub$monthsindebt_cap <-
+  ifelse(CandidateDebtSub$monthsindebt > 12, 13, CandidateDebtSub$monthsindebt)
+summary(CandidateDebtSub$monthsindebt)
+summary(CandidateDebtSub$monthsindebt_cap)
+
+aggr_months <- aggregate(amount_num ~ monthsindebt, data = CandidateDebtSub, sum)
+aggr_months <- aggr_months[order(-aggr_months$monthsindebt),]
+
+barplot(aggr_months$amount_num/1000,
+        names.arg = aggr_months$monthsindebt,
+        cex.names = 0.8,
+        cex.axis = 0.8,
+        ylim = range(0, 450),
+        las = 2,
+        border = NA,
+        axes = FALSE,
+        xlab = "Months till election",
+        ylab = "Debt (in $'000)",
+        col = "coral1")
+axis(2, at = seq(0, 450, 50),
+     cex.axis = 0.6,
+     las = 1)
+title("Debt Accumulation Before Election",
+      cex.main = 1)
+
+rm(aggr_months)
 ```
 
-```{r}
-#table(CandidateDebtSub$vendorcity)
-aggr_city <- aggregate(reportnumber ~ vendorcity, CandidateDebtSub, length)
-colnames(aggr_city) <- c("Vendor City", "Number of Reports")
-aggr_city[order(-aggr_city$`Number of Reports`),]
-rm(aggr_city)
-```
+### 3.3 Debt Type
 
-### 2.4 Univariate Analysis - Code
-
-```{r}
-# Code
-aggr_code <- aggregate(reportnumber ~ code, CandidateDebtSub, length)
-colnames(aggr_code) <- c("Code", "Number of Reports")
-aggr_code[order(-aggr_code$`Number of Reports`),]
-rm(aggr_code)
-```
-
-### 2.5 Univariate Analysis - description_aggr
+One of the key questions we tried to investigate was how candidates spent campaing money. This was captured in the description variable. We aggregated it into fewer groups for analysis purposes.
+We can see from the first chart below, that most of the reports were related to campaign materials. And while consulting related debt reports were only #3 by their abosolute quantity, this category was by far the largest in terms of amount spent. Is it common practice to spend this much on consulting? We would need to compare a few campaigns to make any conclusions.
 
 ```{r}
 # description_aggr
@@ -629,100 +695,8 @@ rm(aggr_descr)
 
 ```
 
-
-### 2.6 Univariate Analysis - Vendor
-
-```{r}
-par(mar=c(4,10,4,4))
-vendorTable <- sort(table(CandidateDebtSub$vendorname),decreasing = TRUE)
-barplot(sort(vendorTable[1:15]),
-        horiz = TRUE,
-        las = 2,
-        cex.names=0.5,
-        cex.axis = 0.8,
-        xlim = range(0:250),
-        axes = FALSE,
-        col='coral1',
-        border=NA)
-axis(1, at = seq(0, 250, 50),
-     cex.axis = 0.6,
-     las = 1)
-title('Number of Debt Filings by Vendor',
-      cex.main = 0.9)
-```
-
-#### 3. Analysis of Key Relationships
-
-### 3.1 Average debt per candidate
-
-Let's first look at how many candidates within each office filed debt reports.
-
-```{r}
-aggr_office <- aggregate(amount_num ~ filerid + office, data = CandidateDebtSub, sum)
-aggr_office <- aggregate(filerid ~ office, data = aggr_office, length)
-aggr_office2 <- aggregate(amount_num ~ office, data = CandidateDebtSub, sum)
-aggr_office <- cbind(aggr_office, aggr_office2[,2])
-colnames(aggr_office)[3] <- c("amount_num")
-aggr_office$amount_p_cand <- aggr_office$amount_num / aggr_office$filerid
-
-par(mar = c(2,4,2,0),
-    #oma = c(0,0,0,0),
-    mfrow = c(2,1))
-barplot(aggr_office$filerid,
-        #names.arg = aggr_office$office,
-        cex.names = 0.5,
-        cex.axis = 0.5,
-        border = NA,
-        las = 2,
-        ylim = range(0, 70),
-        ylab = "Number of Candidates",
-        col = "coral1")
-title("Number of Candidates That Filed Debt Forms (by Office)",
-      cex.main = 0.8)
-
-barplot(aggr_office$amount_p_cand,
-        names.arg = aggr_office$office,
-        cex.names = 0.5,
-        cex.axis = 0.5,
-        border = NA,
-        las = 2,
-        ylab = "Average Debt ($)",
-        col = "coral1")
-title("Average Debt Per Candidate (by Office)",
-      cex.main = 0.8)
-rm(list = c("aggr_office", "aggr_office2"))
-
-```
-
-Based on the above, "State Representative" had by far the largest number of candidates in this election. "County Commissioner", "State Senator" and "Superior Court Judge" had similar number of candidates (between 15 and 20).
-
-
-### 3.2 Timing Analysis of the Debt
-
-```{r}
-aggr_months <- aggregate(amount_num ~ monthsindebt, data = CandidateDebtSub, sum)
-aggr_months <- aggr_months[order(-aggr_months$monthsindebt),]
-
-barplot(aggr_months$amount_num/1000,
-        names.arg = aggr_months$monthsindebt,
-        cex.names = 0.8,
-        cex.axis = 0.8,
-        ylim = range(0, 450),
-        las = 2,
-        border = NA,
-        axes = FALSE,
-        xlab = "Months till election",
-        ylab = "Debt (in $'000)",
-        col = "coral1")
-axis(2, at = seq(0, 450, 50),
-     cex.axis = 0.6,
-     las = 1)
-title("Debt Accumulation Before Election",
-      cex.main = 1)
-
-rm(aggr_months)
-```
-
+In order to analyze the distribution of debt amount by description group, we decided to log our amount variable. Otherwise, it was hard to see any patterns.
+The boxplot below shows that consulting expectedly had the highest mean (after carry forward), but it is interesting to note how small Q1-Q3 range is (with a lot of outliers). It is due to the fact that a lot of the reports in this category had exactly the same amount. According to the report, a lot of candidates were paying the same amount of money to the same vendor for the same service. Is it a clerical error? Or is it some standard service that candidates require during campaigns? We would need to interview campaign managers and the consulting firm to investigate.
 
 ```{r}
 aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
@@ -745,7 +719,13 @@ title("Distribution of Report Debt Amount by Description",
 
 #### 4. Analysis of Secondary Effects
 
+There are multiple secondary effects that come into play while trying to understand candidate debt. It is actually quite challenging to look only at bivariate relationships in this data set. So far, the analysis indicated that debt amounts differ by office, by month they occured in, by type of transactions. There are also factors that we can't actually analyze at this point (party in particular).
+For the purposes of this section, we will look into types of interactions of debt amount: (1) with office and month and (2) with office and type of transaction.
+
 ### 4.1 Timing Analysis of the Debt by Office
+
+We looked previously at how debt occured by months leading to the election. Now if we split this by office (see chart below), we see that "State Representative" candidates were spending disproportionately more in 7+ before the elections. They were still spending more than other candidates in months 0-6, but their share was much smaller than before.
+Questions to investigate: Are campaigns for "State Representatives" longer than for other offices? Why do candidates start spending so much earlier than others?
 
 ```{r}
 aggr_months_office <- aggregate(amount_num ~ monthsindebt + office, data = CandidateDebtSub, sum)
@@ -788,21 +768,21 @@ colnames(aggr_months_office) <- new_vars
 aggr_months_office2 <- aggr_months_office[,-1]
 rownames(aggr_months_office2) <- aggr_months_office[, 1]
 
-par(mar = c(4,4,2,1),
-    oma = c(1,1,1,1))
+par(mar = c(6,5,2,1),
+    oma = c(0,0,0,0))
 barplot(as.matrix(aggr_months_office2),
         border="white",
         space=0.04,
         cex.names = 0.6,
         las = 2,
-        cex.axis = 0.6,
+        cex.axis = 0.8,
         col = rainbow(16),
         axes = FALSE,
         ylim = range(0, 500000),
         xlab = "Months till election",
         ylab = "Debt (in $'000)")
 axis(2, at = seq(0, 500000, 50000),
-     cex.axis = 0.6,
+     cex.axis = 0.5,
      labels = seq(0, 5000, 500),
      las = 1)
 legend("topright",
@@ -816,6 +796,9 @@ title("Debt Accumulation Before Election by Office",
 
 rm(list = c("keep_vars", "new_vars", "aggr_months_office2"))
 ```
+
+Now we know that "State Representatives" were the largest cohort of candidates, hence, they will dominate absolute debt amounts every month.
+In the chart below, we analyze time composition of debt for each office. Here we can see that spending patterns by office are very different. "Governor" and "State Treasurer", for example, occure most of their debt 12+ months prior to the election, while candidates for three county offices (commissioner, assessor, and council member) had the largest share of their debts 6 months before the election. Again, we would need to understand office campaign specifics to draw any conclusions.
 
 ```{r}
 amount_by_office <- aggregate(amount_num ~ office, data = CandidateDebtSub, sum)
@@ -867,7 +850,7 @@ legend("topright",
        inset = c(-0.105, 0),
        ncol = 1,
        cex = 0.6)
-title("Debt Composistion By Month by Office",
+title("Debt Composition By Month by Office",
       cex.main = 1)
 
 rm(list = c("new_vars", "aggr_months_office", "aggr_months_office2",
@@ -875,6 +858,9 @@ rm(list = c("new_vars", "aggr_months_office", "aggr_months_office2",
 ```
 
 ### 4.2 Composition of Debt by Office by Description
+
+Previously, we identified Consulting as the biggest debt bucket for the candidates. As expected, "State Representative" candidates, as the largest cohort, were responsible for the most spend of this category. "Superior Court Judge" reported the second largest share of consulting-related debt. Other offices also contributed a distinguishable share.
+On the other hand, all other debt categories were predominantly generated by "State Representatives". Why is it that debt was more diverse for "State Representatives" compared to other offices? Is it because there were more candidates? Of was it because that campaign was distinctly different from others?
 
 ```{r}
 aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
@@ -921,5 +907,14 @@ rm(list = c("aggr_descr0", "aggr_descr", "aggr_descr_office", "aggr_descr_office
 
 ### 5 Conclusion
 
+
+
 1.  Force Consistency at Capture Point: Given the multiple unique values per candidate per cyclce for things like 'party,' we recommend a data capture strategy that forces consistency.  If a candidate has debt filings with disputing values, the system/process/employee should force a rejection so that the discrepancy is addressed at the point of capture.
 2.  Audit of Existing Data: Any other historical data related to candidate debt should be audited for consistency and quality to make sure it doesn't also suffer from the same consistency problems.
+
+
+we should make a suggestion to collect data against multiple campaigns
+[11:57 PM]
+that would add data points and tell us if what we see is systematic across campaigns or random
+[11:58 PM]
+also, we should point somewhere (maybe it's already in the intro section), that we have data for candidates that filed debt reports. but were there any candidates without debt?
