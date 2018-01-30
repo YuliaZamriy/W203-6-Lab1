@@ -1,37 +1,56 @@
 ---
 title: 'W203 Lab 1: Candidate Debt EDA'
-author: "Yulia and Mitch"
-date: \today
-output: pdf_document
+author: "Eric Hulburd, Mitch Stepleton, Yulia Zamriy"
+date: "\today"
+output:
+  html_document: default
+  pdf_document: default
+geometry: margin=1in
 ---
 
 ```{r setup, include=FALSE}
-options(width=60)
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, tidy=TRUE, strip.white = TRUE, tidy.opts=list(width.cutoff=60), size="small")
+knitr::opts_chunk$set(echo = TRUE, warning=TRUE, message=FALSE, tidy=TRUE, strip.white = TRUE)
 ```
 
-#### 1. Introduction
-
-#### 1.1 Introduction
+## 1. Introduction
 
 
+As members of the Washington State Election Commission, it is our responsibility to ensure that all elections that occur within the State are free, fair, and transparent.  It seems that now, more than ever, a clear understanding of how campagins are financed is necessary to meet the commissions responsibilities.    To that end, we have been asked to perform an exploratory analysis of debt filing data from the prior year.  The goal of this exploratory analysis is to better understand how campaign characteristics are related to the financial debts of candidates.
 
+The analysis is broken into the following 5 secions, with findings and recommendations contained in the conclusion:
 
-### 1.2 Loading Data
+1. **Introduction**
+    a. Loading the Data
+    b. Describing the Data
+    c. Evaluating and Addressing Data Quality
+        i. Addressing #N/A Values
+        ii. Removing Unnecessary Columns
+        iii. Testing Variable Consistency
+2. **Univariate Analysis**
+    a. Debt Amount
+    b. Office
+    c. Vendor State & City
+    d. Code & description aggregate
+    e. Vendor Name
+3. **Analysis of Key Relationships**
+    a. Debt Amount & Candidate
+    b. Debt Amount & Time
+    c. Debt Amount and Office
+4. **Analysis of Secondary Effects**
+    a. Analysis of Time and Office v. Debt
+    b. Composition of Debt by Office & Description
+5. **Conclusion**
+
+### a. Loading Data
 
 ```{r}
-CandidateDebt <- read.csv("CandidateDebt.csv", 
+CandidateDebt <- read.csv("CandidateDebt.csv",
                           stringsAsFactors = FALSE)
 str(CandidateDebt)
-```
-
-Problems with target variable *amount*:
-
-```{r}
 table(CandidateDebt$amount)
 ```
 
-Resolution: shift column names:
+Immediately upon loading the data, it became clear that the columns in the original file had been mislabelled, with each column header shifted one space to the left starting with legislative district.  The final column at the end of the file, vendorzip, did not have values in the file.  To address this, we pulled the header from the file, corrected the column locations, and saved the result to the vector var_names_corrected.
 
 ```{r}
 # get column names from row data
@@ -43,22 +62,57 @@ var_names_corrected <- c(var_names[1:grep("position", var_names)],
                          var_names[(grep("position", var_names) + 1):(length(var_names) - 1)])
 ```
 
-Re-loading raw data:
+We reloaded the data and we replaced the header with the corrected values so that columns were correctly labeled.
 
 ```{r}
 # reading the data with correct headers
-CandidateDebt <- read.csv("CandidateDebt.csv", 
+CandidateDebt <- read.csv("CandidateDebt.csv",
                           stringsAsFactors = FALSE,
                           col.names = var_names_corrected)
 rm(list = c("var_names", "var_names_corrected"))
 ```
 
-Description of data set:
+### b. Exploring rows with missing debt data
 
-Blah Blah Blah
+The relabeled dataset consisted of 1,043 rows, and 28 columns.  Though all columns were initially formatted as character strings, conceptually the data contains:
+
+* 24 strings Fields:
+    + **id**: An iternal identifier that corresponds to a single expenditure record.
+    + **reportnumber**: An identifier used for tracking the individual form.
+    + **origin**: This field shows from which filed report-type the data originates.
+    + **filerid**: The unique id assigned to a candidate.
+    + **filertype**: ndicates if this record is for a candidate.
+    + **filername**: he candidate or committee name as reported on the candidates registration.
+    + **firstname**: his field represents the first name, as reported by the filer.
+    + **middleinitial**: his field represents the middle initial, as reported by the filer.
+    + **lastname**: his field represents the last name, as reported by the filer.
+    + **office**: he office sought by the candidate.
+    + **legislativedistrict**: The Washington State legislative district.
+    + **position**: The position associated with an office.
+    + **party**: he political party as declared by the candidate on their registration.
+    + **jurisdiction**: The political jurisdiction associated with the office of a candidate.
+    + **jurisdictioncounty**: The county associated with the jurisdiction of a candidate.
+    + **jurisdictiontype**: The type of jurisdiction this office is: Statewide, Local, etc.
+    + **recordtype**: This field designates the item as a debt.
+    + **code**: The type of debt.
+    + **description**: The reported description of the transaction.
+    + **vendorname**: The name of the vendor or recipient's name.
+    + **vendoraddress**: The street address of the vendor or recipient.
+    + **vendorcity**: The city of the vendor or recipient.
+    + **vendorstate**:  The state of the vendor or recipient.
+    + **vendorzip**: The zip code of the vendor or recipient.
+        - *Note: No values in dataset original dataset.*
+* 3 Date Fields:
+    + **fromdate**: The start date of the period for the report on which this debt record was reported.
+    + **thrudate**: The end date of the period for the report on which this debt record was reported.
+    + **debtdate**: The date that the debt was incurred.
+* 2 Numeric Fields:
+    + **electionyear**: The election year in the case of candidates.
+    + **amount**: The amount of the debt incurred or order placed.
 
 ```{r}
 dim(CandidateDebt)
+summary(CandidateDebt)
 ```
 
 ```{r}
@@ -67,7 +121,11 @@ CandidateDebt$amount_num <- as.numeric(CandidateDebt$amount)
 summary(CandidateDebt$amount_num)
 ```
 
-### 1.2 Exploring rows with missing debt data
+### c. Evaluating and Addressing Data Quality
+
+#### i. Addressing #N/A Values
+
+Preliminary analysis revealed 56 rows for which the amount variable as '#N/A':
 
 ```{r}
 # creating flag for missing values (1 for missing)
@@ -75,8 +133,8 @@ CandidateDebt$missing_amount <- ifelse(is.na(CandidateDebt$amount_num), 1, 0)
 table(CandidateDebt$missing_amount)
 ```
 
-While exploring 56 rows with missing data, we discovered that those rows are missing data in all columns except filer name and office they run for.
-Good news is we are losing only one candidate if we exclude those 56 rows from the analysis. No unique values of *office* variable are among 56 rows.
+Closer inspection of these 56 rows revealed that they were missing data in all columns except filer name and office they run for.  ADditionally, all 56 values related to a single candidate in the dataset which suggests a data processing issue associated with those entries.  Given that these rows did not contain values for the debt amount and did not contain a unique value of office not otherwise seen in the data, we excluded them from our analysis.
+
 
 ```{r}
 # number of of unique filer ids (candidates in full dataset)
@@ -92,12 +150,129 @@ length(unique(CandidateDebt$office))
 length(unique(CandidateDebt[CandidateDebt$missing_amount == 0,]$office))
 ```
 
+Next, we re-cast the for date variables mentioned above to date values, so that R would recognize them as such for ordinal or time-dependent analysis.
+
 ```{r}
 # converting dates from character to dates
 CandidateDebt$fromdate <- as.Date(CandidateDebt$fromdate, format = "%m/%d/%y")
 CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%y")
 CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%y")
 ```
+
+#### ii. Removing Unnecessary Columns
+
+
+With basic scrubbing and and recasting of variables completed, our next step was to compose the dataset that would be used for the analysis.  Several of the variables within the dataset contained information that were either redundent or unnecessary and as such were removed to make the dataset easier to work with.
+
+Excluded variables:
+
+- **origin**: Only one value ("B.3") for all records.
+- **filertype** Only one value ("Candidate") for all records.
+- **filername** & **firstname** & **middleinitial** & **lastname**:  Analysis will use filerid as a unique candidate identifier.
+- **position** and **position2** (values are not clear and were messed up in raw data)
+- **electionyear**: Only one value ("2012") for all records.
+- **recordtype**: Only one value ("DEBT") for all records.
+
+```{r}
+# creating a vector of variables to keep for analysis
+keep_vars <- c("reportnumber", "filerid", "filername", "office", "legislativedistrict",
+    "party", "jurisdiction", "jurisdictioncounty", "jurisdictiontype",
+    "amount_num", "fromdate", "thrudate", "debtdate", "code", "description",
+    "vendorname", "vendoraddress","vendorcity", "vendorstate")
+
+# removing 56 rows with missing data
+CandidateDebtSub <- CandidateDebt[CandidateDebt$missing_amount == 0,]
+CandidateDebtSub <- CandidateDebtSub[keep_vars]
+rm(keep_vars)
+```
+
+After removing redunant columns, the final dataset to be used in data exploration and analysis contained 987 rows and 19 columns.
+
+```{r}
+dim(CandidateDebtSub)
+summary(CandidateDebtSub)
+```
+
+```{r}
+# checking for presense of missing values
+sum(is.na(CandidateDebtSub))
+```
+
+#### iii. Testing Variable Consistency
+
+Using the trimmed dataset, we performed additional quality checks on variables of interest looking for anything notable or out of the ordinary.  Specifically, for each variable, we counted the distinct values it had in the dataset per candidate.  Given that this data is only for a single election cycle, we would expect values such as **party**, **office**, and **jurisdiction** to only have a single value per candidate.
+
+```{r}
+aggr_office <- aggregate(amount_num ~ filerid + office, data = CandidateDebtSub, sum)
+aggr_office <- aggregate(office ~ filerid, data = aggr_office, length)
+
+aggr_legdis <- aggregate(amount_num ~ filerid + legislativedistrict, data = CandidateDebtSub, sum)
+aggr_legdis <- aggregate(legislativedistrict ~ filerid, data = aggr_legdis, length)
+
+aggr_party <- aggregate(amount_num ~ filerid + party, data = CandidateDebtSub, sum)
+aggr_party <- aggregate(party ~ filerid, data = aggr_party, length)
+
+aggr_jur <- aggregate(amount_num ~ filerid + jurisdiction, data = CandidateDebtSub, sum)
+aggr_jur <- aggregate(jurisdiction ~ filerid, data = aggr_jur, length)
+
+aggr_jurc <- aggregate(amount_num ~ filerid + jurisdictioncounty, data = CandidateDebtSub, sum)
+aggr_jurc <- aggregate(jurisdictioncounty ~ filerid, data = aggr_jurc, length)
+
+aggr_jurt <- aggregate(amount_num ~ filerid + jurisdictiontype, data = CandidateDebtSub, sum)
+aggr_jurt <- aggregate(jurisdictiontype ~ filerid, data = aggr_jurt, length)
+
+aggr_comb <- cbind(aggr_office,
+                   aggr_legdis[,2],
+                   aggr_party[,2],
+                   aggr_jur[,2],
+                   aggr_jurc[,2],
+                   aggr_jurt[,2])
+
+colnames(aggr_comb) <- c("filerid", "office", "legislativedistrict", "party", "jurisdiction",
+                         "jurisdictioncounty", "jurisdictiontype")
+rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc", "aggr_jurt"))
+
+#sapply(aggr_comb[, -1], table)
+summary(aggr_comb[, -1])
+```
+
+Unfortunately, this analysis revealed that several fields that would otherwise be of interest to us contain values that are most likely inaccurate. More specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset.  Given that candidates can only have one value for each of these in a given election cycle, this suggests that some or all of the values contained in these columns is not reliable.  To avoid making recommendations on inaccurate data, this analysis will exclude these variables, and provide guidance for improving data capture and quality moving forward.
+
+MITCH NOTE: I recommend we remove the below code on row-wise analysis through the extra variable section.  Column-wise exlusion makes a lot more sense IMHO.
+
+```{r}
+# creating flag variables for candidates with more than 1 unique value
+aggr_comb$legdist_mult <- ifelse(aggr_comb$legislativedistrict > 1, 1, 0)
+aggr_comb$party_mult <- ifelse(aggr_comb$party > 1, 1, 0)
+aggr_comb$jur_mult <- ifelse(aggr_comb$jurisdiction > 1, 1, 0)
+aggr_comb$jurc_mult <- ifelse(aggr_comb$jurisdictioncounty > 1, 1, 0)
+aggr_comb$jurt_mult <- ifelse(aggr_comb$jurisdictiontype > 1, 1, 0)
+aggr_comb$mult <- aggr_comb$legdist_mult + aggr_comb$party_mult + aggr_comb$jur_mult +
+  aggr_comb$jurc_mult + aggr_comb$jurt_mult
+table(aggr_comb$mult)
+```
+
+Only 34 candidates with "clean" data
+
+```{r}
+# adding this flag variable to the main data set
+CandidateDebtSub <- merge(CandidateDebtSub, aggr_comb[, c("filerid", "mult")], by = "filerid")
+rm(aggr_comb)
+```
+
+```{r}
+# counting number of unique offices among those 34 candidates
+length(unique(CandidateDebtSub$office[CandidateDebtSub$mult == 0]))
+```
+```{r}
+# counting number of unique parties/offices among those 34 candidates
+aggr_party <- aggregate(amount_num ~ filerid + party + office, data = CandidateDebtSub[CandidateDebtSub$mult == 0,], sum)
+table(aggr_party$office, aggr_party$party)
+rm(aggr_party)
+```
+
+Based on the above, only "State Prepresentative" and "Superior Court Judge" had representatives of two major parties.This is suspect.
+Hence, we will eclude the following 5 variables from the analysis: *legislativedistrict*, *party*, *jurisdiction*, *jurisdictioncounty*, *jurisdictiontype*
 
 ### 1.3 Creating analytic dataset
 
@@ -162,14 +337,14 @@ aggr_jurc <- aggregate(jurisdictioncounty ~ filerid, data = aggr_jurc, length)
 aggr_jurt <- aggregate(amount_num ~ filerid + jurisdictiontype, data = CandidateDebtSub, sum)
 aggr_jurt <- aggregate(jurisdictiontype ~ filerid, data = aggr_jurt, length)
 
-aggr_comb <- cbind(aggr_office, 
+aggr_comb <- cbind(aggr_office,
                    aggr_legdis[,2],
                    aggr_party[,2],
                    aggr_jur[,2],
                    aggr_jurc[,2],
                    aggr_jurt[,2])
 
-colnames(aggr_comb) <- c("filerid", "office", "legislativedistrict", "party", "jurisdiction", 
+colnames(aggr_comb) <- c("filerid", "office", "legislativedistrict", "party", "jurisdiction",
                          "jurisdictioncounty", "jurisdictiontype")
 rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc", "aggr_jurt"))
 
@@ -177,8 +352,7 @@ rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc",
 summary(aggr_comb[, -1])
 ```
 
-
-The results of this preliminary analysis are not encouraging, and indicate that several fields that would otherwise be of interest to us are not completely accurate. More specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset.  Given that candidates can only have one value for each of these in a given election cycle, this suggests that some or all of the values contained in these columns is not reliable.  To avoid making recommendations on inaccurate data, this analysis will exclude these variables, and provide guidance for how the [CLINT] can best improve data quality moving forward.  
+The results of this preliminary analysis are not encouraging, and indicate that several fields that would otherwise be of interest to us are not completely accurate. More specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset.  Given that candidates can only have one value for each of these in a given election cycle, this suggests that some or all of the values contained in these columns is not reliable.  To avoid making recommendations on inaccurate data, this analysis will exclude these variables, and provide guidance for how the [CLINT] can best improve data quality moving forward.
 
 ---Based on the above, we think all but *office* variables are unreliable
 
@@ -216,9 +390,9 @@ rm(aggr_party)
 Based on the above, only "State Prepresentative" and "Superior Court Judge" had representatives of two major parties.This is suspect.
 Hence, we will eclude the following 5 variables from the analysis: *legislativedistrict*, *party*, *jurisdiction*, *jurisdictioncounty*, *jurisdictiontype*
 
-### 1.5 Creating extra variables
 
-Processing date variables
+
+### 1.5 Creating extra variables
 
 ```{r}
 summary(CandidateDebtSub$debtdate)
@@ -226,24 +400,25 @@ summary(CandidateDebtSub$fromdate)
 summary(CandidateDebtSub$thrudate)
 ```
 
-Based on the above we will assume that the election was in August 2012
+Given that financial debts are subject to the time-value of money, it may be useful to include the age of candidate debt in the analysis. Though we do not have access the actual debt age, we can still compare the date of the debt of origination (debtdate) and the thru-date of the period (thrudate) to derive the age of the debt at the time of the filing.  This value is represented by the weeksindebt variable, which is the number of weeks between the debtdate and the thrudate of the filing.  [MITCH NOTE: Looking at the code, I think its looking at the debtdates across filings so the above may not apply.]
+
 
 ```{r}
 # Number of months before election the debt occured
-CandidateDebtSub$weeksindebt <- 
+CandidateDebtSub$weeksindebt <-
   round(difftime(max(CandidateDebtSub$debtdate), CandidateDebtSub$debtdate, units = "weeks"))
-CandidateDebtSub$monthsindebt <- 
+CandidateDebtSub$monthsindebt <-
   round(CandidateDebtSub$weeksindebt / 52 * 12)
-CandidateDebtSub$monthsindebt <- 
+CandidateDebtSub$monthsindebt <-
   as.numeric(CandidateDebtSub$monthsindebt)
 # capping months at 13 months (for exploratory reasons)
-CandidateDebtSub$monthsindebt_cap <- 
+CandidateDebtSub$monthsindebt_cap <-
   ifelse(CandidateDebtSub$monthsindebt > 12, 13, CandidateDebtSub$monthsindebt)
 summary(CandidateDebtSub$monthsindebt)
 summary(CandidateDebtSub$monthsindebt_cap)
 ```
 
-Recoding debt *description* variable to make it more digestable
+The high number of blank values for the code variable reduces its utility in understanding what items or services are associated with candidate debt filings.  Conversely, the description field does not have blanks, but is at a level of granularity that makes it unwieldly for this analysis.  To solve these issues, we created a derived variable that 'buckets' candidate debt into uniform categories based on the filing description.  We acknowledge that there is at least some degree of judgement when making these category determinations so have included the code to be completely transparent.
 
 ```{r}
 creditcard <- c("AM EX", "AMERICAN EXPRESS", "AMERICAN EXPRESS LOWES", "AMEX",
@@ -253,7 +428,7 @@ consulting <- c("CONSULTING", "JANUARY SERVICES", "$750 PER MONTH THROUGH OCTOBE
                 "AUGUST CONSULTING", "CONSULTING ESTIMATE", "CONSULTING/PHOTOGRAPHY",
                 "CONSULTING/TRAVEL", "MAY CONSULTING SERVICES", "MONTHLY CONSULTING FEE",
                 "RETAINER", "APRIL RETAINER")
-swag <- c("RE-ORDER TEE SHIRTS", "BUMPER STICKERS/FLYERS", "CONSULTING/YARD SIGNS", 
+swag <- c("RE-ORDER TEE SHIRTS", "BUMPER STICKERS/FLYERS", "CONSULTING/YARD SIGNS",
           "YARD SIGNS", "OFFICE SUPPLIES/ WATER FOR KICKOFF")
 
 CandidateDebtSub$description_aggr[grepl("TREASURY", CandidateDebtSub$description, ignore.case = TRUE)] <-
@@ -307,7 +482,17 @@ table(CandidateDebtSub$description_aggr)
 #table(CandidateDebtSub$description[CandidateDebtSub$description_aggr == "OTHER"])
 ```
 
+```{r}
+aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
+aggr_descr[order(-aggr_descr$amount_num),]
+rm(aggr_descr)
+```
+
 Now we are ready to explore!
+
+```{r}
+save(CandidateDebtSub, file = "CandidateDebtSub.RData")
+```
 
 #### 2. Univariate Analysis
 
@@ -317,7 +502,7 @@ Univariate analysis was conducted on the variables that were not determined to h
 - WeeksinDebt
 - Code:  The type of debt
 - description_aggr (Derived): A derived field categorizing the type of expense of the debt, based on the debt description field
-- weeksindebt (Derived): A derived field showing the length time the debt was held for, based on the debt date and 
+- weeksindebt (Derived): A derived field showing the length time the debt was held for, based on the debt date and
 
 
 ### 2.1 Univariate Analysis - Amount
@@ -329,11 +514,11 @@ summary(CandidateDebtSub$amount_num)
 ```{r}
 # Amount
 
-hist(CandidateDebtSub$amount, 
-     breaks=50, 
-     main = 'Frequency of Debt Filing by Debt Amount', 
-     col='coral1', 
-     border=NA, 
+hist(CandidateDebtSub$amount,
+     breaks=50,
+     main = 'Frequency of Debt Filing by Debt Amount',
+     col='coral1',
+     border=NA,
      xlim = range(0:20000),
      xaxt = "n",
      xlab = 'Debt Amount ($)')
@@ -342,7 +527,7 @@ axis(1, at = seq(0, 20000, 2000),
      cex.axis = 0.6)
 ```
 
-The amounts associated with each filing are between $3.24 and $19,000, with the majority being less than $500.    
+The amounts associated with each filing are between $3.24 and $19,000, with the majority being less than $500.
 ```{r}
 CandidateDebtSub[CandidateDebtSub$amount_num >= 19000, c("office", "amount_num", "description")]
 ```
@@ -357,18 +542,18 @@ There are two notable observations when looking at a histogram of the variable: 
 
 ```{r}
 par(mar=c(4,8,4,5))
-barplot(sort(table(CandidateDebtSub$office)), 
-            horiz=TRUE, 
-            las = 1, 
+barplot(sort(table(CandidateDebtSub$office)),
+            horiz=TRUE,
+            las = 1,
             cex.names = 0.5,
-            col='coral1', 
+            col='coral1',
             border=NA)
 title('Number of Debt Filings by Political Office of Candidate',
       cex.main = 0.8)
 ```
 
 
-The vast majority of filings in the existing dataset are from respondents running for or currently serving as State REpresentatives and State Senators.  Given that there are many more seats for those positions, this finding is to be expected.  
+The vast majority of filings in the existing dataset are from respondents running for or currently serving as State REpresentatives and State Senators.  Given that there are many more seats for those positions, this finding is to be expected.
 
 ### 2.3 Univariate Analysis - Vendor State & Vendor City
 
@@ -412,11 +597,11 @@ aggr_descr <- aggr_descr[order(aggr_descr$amount_num),]
 
 par(mar=c(2,7,2,2),
     mfrow=c(2,1))
-barplot(sort(table(CandidateDebtSub$description_aggr)), 
+barplot(sort(table(CandidateDebtSub$description_aggr)),
         horiz = TRUE,
-        las = 2, 
-        cex.names=0.5, 
-        col='coral1', 
+        las = 2,
+        cex.names=0.5,
+        col='coral1',
         border=NA,
         axes = FALSE)
 axis(1, at = seq(0, 300, 50),
@@ -426,13 +611,13 @@ title('Number of Debt Filings by Debt Description (Derived)',
       cex.main = 0.7)
 
 #par(mar=c(4,12,4,4))
-barplot(aggr_descr$amount_num, 
+barplot(aggr_descr$amount_num,
         names.arg = aggr_descr$description_aggr,
         horiz = TRUE,
-        las = 2, 
-        cex.names=0.5, 
+        las = 2,
+        cex.names=0.5,
         axes = FALSE,
-        col='coral1', 
+        col='coral1',
         border=NA)
 axis(1, at = seq(0, 800000, 100000),
      cex.axis = 0.6,
@@ -450,14 +635,14 @@ rm(aggr_descr)
 ```{r}
 par(mar=c(4,10,4,4))
 vendorTable <- sort(table(CandidateDebtSub$vendorname),decreasing = TRUE)
-barplot(sort(vendorTable[1:15]), 
+barplot(sort(vendorTable[1:15]),
         horiz = TRUE,
-        las = 2, 
-        cex.names=0.5, 
+        las = 2,
+        cex.names=0.5,
         cex.axis = 0.8,
         xlim = range(0:250),
         axes = FALSE,
-        col='coral1', 
+        col='coral1',
         border=NA)
 axis(1, at = seq(0, 250, 50),
      cex.axis = 0.6,
@@ -480,7 +665,7 @@ aggr_office <- cbind(aggr_office, aggr_office2[,2])
 colnames(aggr_office)[3] <- c("amount_num")
 aggr_office$amount_p_cand <- aggr_office$amount_num / aggr_office$filerid
 
-par(mar = c(2,4,2,0), 
+par(mar = c(2,4,2,0),
     #oma = c(0,0,0,0),
     mfrow = c(2,1))
 barplot(aggr_office$filerid,
@@ -509,7 +694,7 @@ rm(list = c("aggr_office", "aggr_office2"))
 
 ```
 
-Based on the above, "State Representative" had by far the largest number of candidates in this election. "County Commissioner", "State Senator" and "Superior Court Judge" had similar number of candidates (between 15 and 20). 
+Based on the above, "State Representative" had by far the largest number of candidates in this election. "County Commissioner", "State Senator" and "Superior Court Judge" had similar number of candidates (between 15 and 20).
 
 
 ### 3.2 Timing Analysis of the Debt
@@ -543,7 +728,7 @@ rm(aggr_months)
 aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
 aggr_descr0 <- aggr_descr0[order(-aggr_descr0$amount_num),]
 
-par(mar = c(7,4,2,3), 
+par(mar = c(7,4,2,3),
     oma = c(0,0,0,0),
     xpd = TRUE)
 boxplot(amount_num ~ description_aggr, data = CandidateDebtSub,
@@ -565,15 +750,15 @@ title("Distribution of Report Debt Amount by Description",
 ```{r}
 aggr_months_office <- aggregate(amount_num ~ monthsindebt + office, data = CandidateDebtSub, sum)
 aggr_months_office <-
-  reshape(aggr_months_office, 
-          v.names = "amount_num", 
+  reshape(aggr_months_office,
+          v.names = "amount_num",
           idvar = "office",
           timevar = "monthsindebt",
           direction = "wide")
 
 aggr_months_office[is.na(aggr_months_office)] <- 0
 
-aggr_months_office$amount_num.19plus = 
+aggr_months_office$amount_num.19plus =
   aggr_months_office$amount_num.19 +
   aggr_months_office$amount_num.20 +
   aggr_months_office$amount_num.21 +
@@ -587,27 +772,27 @@ aggr_months_office$amount_num.19plus =
   aggr_months_office$amount_num.43 +
   aggr_months_office$amount_num.46
 
-keep_vars <- c("office", "amount_num.19plus", "amount_num.18", "amount_num.17", 
-               "amount_num.16", "amount_num.15", "amount_num.14", "amount_num.13", 
-               "amount_num.12", "amount_num.11", "amount_num.10", "amount_num.9", 
-               "amount_num.8", "amount_num.7", "amount_num.6", "amount_num.5", 
-               "amount_num.4", "amount_num.3", 
-               "amount_num.2", "amount_num.1", "amount_num.0")  
-new_vars <- c("office", "Month.19p", "Month.18", "Month.17", "Month.16", "Month.15", 
-              "Month.14", "Month.13", "Month.12", "Month.11", "Month.10", "Month.9", 
-              "Month.8", "Month.7", "Month.6", "Month.5", "Month.4", "Month.3", 
-              "Month.2", "Month.1", "Month.0")  
+keep_vars <- c("office", "amount_num.19plus", "amount_num.18", "amount_num.17",
+               "amount_num.16", "amount_num.15", "amount_num.14", "amount_num.13",
+               "amount_num.12", "amount_num.11", "amount_num.10", "amount_num.9",
+               "amount_num.8", "amount_num.7", "amount_num.6", "amount_num.5",
+               "amount_num.4", "amount_num.3",
+               "amount_num.2", "amount_num.1", "amount_num.0")
+new_vars <- c("office", "Month.19p", "Month.18", "Month.17", "Month.16", "Month.15",
+              "Month.14", "Month.13", "Month.12", "Month.11", "Month.10", "Month.9",
+              "Month.8", "Month.7", "Month.6", "Month.5", "Month.4", "Month.3",
+              "Month.2", "Month.1", "Month.0")
 
 aggr_months_office <- aggr_months_office[, keep_vars]
 colnames(aggr_months_office) <- new_vars
 aggr_months_office2 <- aggr_months_office[,-1]
 rownames(aggr_months_office2) <- aggr_months_office[, 1]
 
-par(mar = c(4,4,2,1), 
+par(mar = c(4,4,2,1),
     oma = c(1,1,1,1))
-barplot(as.matrix(aggr_months_office2), 
-        border="white", 
-        space=0.04, 
+barplot(as.matrix(aggr_months_office2),
+        border="white",
+        space=0.04,
         cex.names = 0.6,
         las = 2,
         cex.axis = 0.6,
@@ -620,14 +805,14 @@ axis(2, at = seq(0, 500000, 50000),
      cex.axis = 0.6,
      labels = seq(0, 5000, 500),
      las = 1)
-legend("topright", 
-       legend = rownames(aggr_months_office2), 
-       fill = rainbow(16), 
+legend("topright",
+       legend = rownames(aggr_months_office2),
+       fill = rainbow(16),
        inset = c(0.365, 0),
        ncol = 2,
        cex = 0.5)
 title("Debt Accumulation Before Election by Office",
-      cex.main = 1)  
+      cex.main = 1)
 
 rm(list = c("keep_vars", "new_vars", "aggr_months_office2"))
 ```
@@ -657,15 +842,15 @@ aggr_months_office$Month.2 <- 100 * aggr_months_office$Month.2 / aggr_months_off
 aggr_months_office$Month.1 <- 100 * aggr_months_office$Month.1 / aggr_months_office$amount
 aggr_months_office$Month.0 <- 100 * aggr_months_office$Month.0 / aggr_months_office$amount
 
-new_vars <- c("Month.12p", "Month.11", "Month.10", "Month.9", 
-              "Month.8", "Month.7", "Month.6", "Month.5", "Month.4", "Month.3", 
-              "Month.2", "Month.1", "Month.0")  
+new_vars <- c("Month.12p", "Month.11", "Month.10", "Month.9",
+              "Month.8", "Month.7", "Month.6", "Month.5", "Month.4", "Month.3",
+              "Month.2", "Month.1", "Month.0")
 
 aggr_months_office2 <- aggr_months_office[,new_vars]
 aggr_months_office3 <- as.data.frame(t(aggr_months_office2))
 colnames(aggr_months_office3) <- aggr_months_office[,1]
 
-par(mar = c(8,4,2,3), 
+par(mar = c(8,4,2,3),
     oma = c(0,0,0,0),
     xpd = TRUE)
 barplot(as.matrix(aggr_months_office3),
@@ -685,19 +870,19 @@ legend("topright",
 title("Debt Composistion By Month by Office",
       cex.main = 1)
 
-rm(list = c("new_vars", "aggr_months_office", "aggr_months_office2", 
+rm(list = c("new_vars", "aggr_months_office", "aggr_months_office2",
             "aggr_months_office3", "amount_by_office"))
 ```
 
-### 4.2 Composition of Debt by Office by Description 
+### 4.2 Composition of Debt by Office by Description
 
 ```{r}
 aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
 aggr_descr0 <- aggr_descr0[order(-aggr_descr0$amount_num),]
 aggr_descr <- aggregate(amount_num ~ office + description_aggr, data = CandidateDebtSub, sum)
 aggr_descr_office <-
-  reshape(aggr_descr, 
-          v.names = "amount_num", 
+  reshape(aggr_descr,
+          v.names = "amount_num",
           idvar = "office",
           timevar = "description_aggr",
           direction = "wide")
@@ -707,12 +892,12 @@ colnames(aggr_descr_office) <- sub("amount_num.", "", colnames(aggr_descr_office
 aggr_descr_office2 <- aggr_descr_office[,aggr_descr0[,1]]
 rownames(aggr_descr_office2) <- aggr_descr_office[, 1]
 
-par(mar = c(8,4,2,3), 
+par(mar = c(8,4,2,3),
     oma = c(0,0,0,0),
     xpd = TRUE)
-barplot(as.matrix(aggr_descr_office2), 
-        border="white", 
-        space=0.04, 
+barplot(as.matrix(aggr_descr_office2),
+        border="white",
+        space=0.04,
         cex.names = 0.6,
         las = 2,
         cex.axis = 0.6,
@@ -733,3 +918,8 @@ title("Debt Composition by Description by Office",
 
 rm(list = c("aggr_descr0", "aggr_descr", "aggr_descr_office", "aggr_descr_office2"))
 ```
+
+### 5 Conclusion
+
+1.  Force Consistency at Capture Point: Given the multiple unique values per candidate per cyclce for things like 'party,' we recommend a data capture strategy that forces consistency.  If a candidate has debt filings with disputing values, the system/process/employee should force a rejection so that the discrepancy is addressed at the point of capture.
+2.  Audit of Existing Data: Any other historical data related to candidate debt should be audited for consistency and quality to make sure it doesn't also suffer from the same consistency problems.
