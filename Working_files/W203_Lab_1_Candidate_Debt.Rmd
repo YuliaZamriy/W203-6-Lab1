@@ -339,7 +339,7 @@ hist(CandidateDebtSub$amount,
      xlab = 'Debt Amount ($)')
 axis(1, at = seq(0, 20000, 2000),
      labels = seq(0, 20000, 2000),
-     cex.axis = 0.8)
+     cex.axis = 0.6)
 ```
 
 The amounts associated with each filing are between $3.24 and $19,000, with the majority being less than $500.    
@@ -356,22 +356,15 @@ There are two notable observations when looking at a histogram of the variable: 
 ### YZ: this chart needs a legend
 
 ```{r}
-#tabOfficeDF <- as.data.frame(table(CandidateDebtSub$office))
-#tabOfficeDF[order(tabOfficeDF$Freq, decreasing = T),]
-#officeDF <- as.data.frame(table(CandidateDebtSub$office))
-par(mar=c(4,15,4,5))
-y = barplot(sort(table(CandidateDebtSub$office)), 
+par(mar=c(4,8,4,5))
+barplot(sort(table(CandidateDebtSub$office)), 
             horiz=TRUE, 
             las = 1, 
             cex.names = 0.5,
             col='coral1', 
-            main = 'Number of Debt Filings by Political Office of Candidate',
             border=NA)
-x = rev(c(520, 264, 27, 6,6, 1000, 49, 6,6, 210, 210, 1000,6, 16, 6, 134 ))
-points(x, y, col='coral4', pch=16, cex=1)
-
-rm(list = c("x","y"))
-#sort(table(CandidateDebtSub$office))
+title('Number of Debt Filings by Political Office of Candidate',
+      cex.main = 0.8)
 ```
 
 
@@ -381,9 +374,6 @@ The vast majority of filings in the existing dataset are from respondents runnin
 
 ```{r}
 table(CandidateDebtSub$vendorstate)
-# par(mar=c(4,15,4,4))
-# barplot(sort(table(CandidateDebtSub$vendorstate),decreasing=T), 
-#         main = 'Number of Debt Filings by State of Debt Holder', xlab = 'State',ylab = 'Frequency', col='coral1', border=NA)
 ```
 
 It appears there are 25 values for which there is no listed State for the deb holder.  Looking at those values, they all appear to be associated with Credit Card debt.
@@ -391,62 +381,56 @@ It appears there are 25 values for which there is no listed State for the deb ho
 ```{r}
 DF <- as.data.frame(CandidateDebtSub)
 table(DF$vendorname[DF$vendorstate == ''])
+rm(DF)
 ```
-### YZ: Maybe for the below we need table only
 
 ```{r}
-table(CandidateDebtSub$vendorcity)
-# par(mar=c(2.5,7,4,4))
-# barplot(sort(table(CandidateDebtSub$vendorcity)), 
-#         horiz = TRUE,
-#         las = 2, 
-#         cex.names=0.6, 
-#         main = 'Number of Debt Filings by City of Debt Holder', 
-#         xlab = 'State', 
-#         col='coral1', 
-#         border=NA)
+#table(CandidateDebtSub$vendorcity)
+aggr_city <- aggregate(reportnumber ~ vendorcity, CandidateDebtSub, length)
+colnames(aggr_city) <- c("Vendor City", "Number of Reports")
+aggr_city[order(-aggr_city$`Number of Reports`),]
+rm(aggr_city)
 ```
 
 ### 2.4 Univariate Analysis - Code
 
 ```{r}
 # Code
-table(CandidateDebtSub$code)
-#par(mar=c(4,12,4,4))
-# barplot(sort(table(CandidateDebtSub$code)), horiz = TRUE,las = 2, cex.names=1, main = 'Number of Debt # Filings by Type of Debt (Code)', xlab = 'State', col='coral1', border=NA)
+aggr_code <- aggregate(reportnumber ~ code, CandidateDebtSub, length)
+colnames(aggr_code) <- c("Code", "Number of Reports")
+aggr_code[order(-aggr_code$`Number of Reports`),]
+rm(aggr_code)
 ```
 
 ### 2.5 Univariate Analysis - description_aggr
 
-### YZ: We should fit the following two charts next to each other
-
 ```{r}
 # description_aggr
-#table(CandidateDebtSub$description_aggr)
 
-par(mar=c(4,12,4,4))
-barplot(sort(table(CandidateDebtSub$description_aggr)), 
-        horiz = TRUE,
-        las = 2, 
-        cex.names=0.8, 
-        main = 'Number of Debt Filings by Debt Description (Derived)', 
-        xlab = 'Number of Debt Filings', 
-        col='coral1', 
-        border=NA)
-```
-
-```{r}
 aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
 aggr_descr <- aggr_descr[order(aggr_descr$amount_num),]
 
-par(mar=c(4,12,4,4))
+par(mar=c(2,7,2,2),
+    mfrow=c(2,1))
+barplot(sort(table(CandidateDebtSub$description_aggr)), 
+        horiz = TRUE,
+        las = 2, 
+        cex.names=0.5, 
+        col='coral1', 
+        border=NA,
+        axes = FALSE)
+axis(1, at = seq(0, 300, 50),
+     cex.axis = 0.6,
+     las = 1)
+title('Number of Debt Filings by Debt Description (Derived)',
+      cex.main = 0.7)
+
+#par(mar=c(4,12,4,4))
 barplot(aggr_descr$amount_num, 
         names.arg = aggr_descr$description_aggr,
         horiz = TRUE,
         las = 2, 
-        cex.names=0.8, 
-        main = 'Total Debt Amount By Debt Description (Derived)', 
-        xlab = "Debt Amount ($ '000)", 
+        cex.names=0.5, 
         axes = FALSE,
         col='coral1', 
         border=NA)
@@ -454,23 +438,32 @@ axis(1, at = seq(0, 800000, 100000),
      cex.axis = 0.6,
      labels = seq(0, 800, 100),
      las = 1)
+title('Total Debt Amount By Debt Description in $000 (Derived)',
+      cex.main = 0.7)
 rm(aggr_descr)
 
 ```
 
+
 ### 2.6 Univariate Analysis - Vendor
 
 ```{r}
-par(mar=c(4,15,4,4))
+par(mar=c(4,10,4,4))
 vendorTable <- sort(table(CandidateDebtSub$vendorname),decreasing = TRUE)
 barplot(sort(vendorTable[1:15]), 
         horiz = TRUE,
         las = 2, 
-        cex.names=0.8, 
-        main = 'Number of Debt Filings by Vendor', 
-        xlab = 'Number of Debt Filings', 
+        cex.names=0.5, 
+        cex.axis = 0.8,
+        xlim = range(0:250),
+        axes = FALSE,
         col='coral1', 
         border=NA)
+axis(1, at = seq(0, 250, 50),
+     cex.axis = 0.6,
+     las = 1)
+title('Number of Debt Filings by Vendor',
+      cex.main = 0.9)
 ```
 
 #### 3. Analysis of Key Relationships
@@ -487,28 +480,21 @@ aggr_office <- cbind(aggr_office, aggr_office2[,2])
 colnames(aggr_office)[3] <- c("amount_num")
 aggr_office$amount_p_cand <- aggr_office$amount_num / aggr_office$filerid
 
-par(mar = c(8,4,2,0), 
-    oma = c(0,0,0,0))
+par(mar = c(2,4,2,0), 
+    #oma = c(0,0,0,0),
+    mfrow = c(2,1))
 barplot(aggr_office$filerid,
-        names.arg = aggr_office$office,
+        #names.arg = aggr_office$office,
         cex.names = 0.5,
         cex.axis = 0.5,
         border = NA,
         las = 2,
         ylim = range(0, 70),
         ylab = "Number of Candidates",
-        main = "Number of Candidates That Filed Debt Forms (by Office)",
         col = "coral1")
-#text(aggr_office$filerid, 
-#     labels = aggr_office$filerid, 
-#     adj = c(0.5, 0),
-#     cex = 0.5)
-```
+title("Number of Candidates That Filed Debt Forms (by Office)",
+      cex.main = 0.8)
 
-
-```{r}
-par(mar = c(8,4,2,0), 
-    oma = c(0,0,0,0))
 barplot(aggr_office$amount_p_cand,
         names.arg = aggr_office$office,
         cex.names = 0.5,
@@ -516,8 +502,9 @@ barplot(aggr_office$amount_p_cand,
         border = NA,
         las = 2,
         ylab = "Average Debt ($)",
-        main = "Average Debt Per Candidate (by Office)",
         col = "coral1")
+title("Average Debt Per Candidate (by Office)",
+      cex.main = 0.8)
 rm(list = c("aggr_office", "aggr_office2"))
 
 ```
