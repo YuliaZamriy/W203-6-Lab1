@@ -3,15 +3,15 @@ title: 'W203 Lab 1: Candidate Debt EDA'
 author: "Eric Hulburd, Mitch Stepleton, Yulia Zamriy"
 date: "\today"
 output:
-  pdf_document: default
+#  pdf_document: default
   html_document: default
-geometry: margin=1in
-header-includes:
-  - \usepackage{tilting}
+# geometry: margin=1in
+# header-includes:
+#  - \usepackage{tilting}
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=TRUE, message=FALSE, tidy=TRUE, strip.white = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, tidy=TRUE, strip.white = TRUE)
 ```
 
 ## 1. Introduction
@@ -49,7 +49,7 @@ The analysis is broken into the following 5 sections, with findings and recommen
 ```{r}
 CandidateDebt <- read.csv("CandidateDebt.csv",
                           stringsAsFactors = FALSE)
-str(CandidateDebt)
+#str(CandidateDebt)
 table(CandidateDebt$amount)
 ```
 
@@ -115,7 +115,7 @@ The relabeled dataset consisted of 1,043 rows, and 28 columns.  Though all colum
 
 ```{r}
 dim(CandidateDebt)
-summary(CandidateDebt)
+#summary(CandidateDebt)
 ```
 
 ```{r}
@@ -138,11 +138,11 @@ CandidateDebt$missing_amount <- ifelse(is.na(CandidateDebt$amount_num), 1, 0)
 table(CandidateDebt$missing_amount)
 ```
 
-Closer inspection of these 56 rows revealed that they were missing data in all columns except filer name and office they run for.  ADditionally, all 56 values related to a single candidate in the dataset which suggests a data processing issue associated with those entries.  Given that these rows did not contain values for the debt amount and did not contain a unique value of office not otherwise seen in the data, we excluded them from our analysis.
+Closer inspection of these 56 rows revealed that they were missing data in all columns except filer name and office they run for.  Additionally, all 56 values related to a single candidate in the dataset which suggests a data processing issue associated with those entries.  Given that these rows did not contain values for the debt amount and did not contain a unique value of office not otherwise seen in the data, we excluded them from our analysis.
 
 
 ```{r}
-# number of of unique filer ids (candidates in full dataset)
+# number of unique filer ids (candidates in full dataset)
 length(unique(CandidateDebt$filerid))
 # number of unique filer ids (candidates) in data set without 56 rows with missing data:
 length(unique(CandidateDebt[CandidateDebt$missing_amount == 0,]$filerid))
@@ -191,11 +191,11 @@ CandidateDebtSub <- CandidateDebtSub[keep_vars]
 rm(keep_vars)
 ```
 
-After removing redunant columns, the final dataset to be used in data exploration and analysis contained 987 rows and 19 columns.
+After removing redunant columns, the final dataset to be used in data exploration and analysis contained 987 rows and 19 columns. The below output serves as a check that all variables of interest are in the correct format and there are no apparent missing values.
 
 ```{r}
 dim(CandidateDebtSub)
-summary(CandidateDebtSub)
+#summary(CandidateDebtSub)
 ```
 
 ```{r}
@@ -326,17 +326,23 @@ Despite the skew towards reported number of smaller transactions, it is interest
 
 ```{r}
 total_spent = sum(CandidateDebtSub$amount_num)
-plot(sort(CandidateDebtSub$amount_num), cumsum(sort(CandidateDebtSub$amount_num)) / total_spent, xlab="donation size ($)", ylab="% of total spent", main="Cumulative Spending by Amount")
+plot(sort(CandidateDebtSub$amount_num), cumsum(sort(CandidateDebtSub$amount_num)) / total_spent, xlab="Debt Amount ($)", ylab="% of total spent", main="Cumulative Spending by Amount", col ="coral1")
 
 ```
 
 This chart above goes to show how the frequency of the distribution amount may often be deceptive in terms of where most money is being spent by candidates and helps us hone in on the following.
 
+
 ```{r}
+# Share of debt with less than $500 per report
 sum(subset(CandidateDebtSub, amount_num < 500)$amount_num) / total_spent
+# Share of debt with more than $5000 per report
 sum(subset(CandidateDebtSub, amount_num >= 5000)$amount_num) / total_spent
+# Number of reports with $5070.14 in debt
 sum(CandidateDebtSub$amount_num == 5070.14)
+# Share of debt with more than $19000 per report
 sum(subset(CandidateDebtSub, amount_num >= 19000)$amount_num) / total_spent
+# Number of reports with $19000 in debt
 sum(CandidateDebtSub$amount_num == 19000)
 ```
 
@@ -471,8 +477,8 @@ table(CandidateDebtSub$description_aggr)
 aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
 aggr_descr <- aggr_descr[order(aggr_descr$amount_num),]
 
-par(mar=c(2,7,2,2),
-    mfrow=c(2,1))
+par(mar=c(2,7,2,2))
+#    mfrow=c(2,1))
 barplot(sort(table(CandidateDebtSub$description_aggr)),
         horiz = TRUE,
         las = 2,
@@ -529,14 +535,14 @@ summary(CandidateDebtSub$thrudate)
 These summaries give us a good indication of the period of time from which the sample data was collected. The data extends from October 2008 until August 2012. Because political are campaigns are, fortunately, not run annually, it is unlikely we would see the same spending patterns year after year. We can run a rudimentary analysis with a histgram to see when most the most frequent months and years were for campaign transactions.
 
 ```{r}
-hist(as.numeric(format(CandidateDebtSub$debtdate, format="%Y")), breaks=seq(2007.5, 2012.5, 1), main="Frequency of Campaign Transactions", xlab="Year")
-hist(as.numeric(format(CandidateDebtSub$debtdate, format="%m")), breaks=seq(0.5, 12.5, 1), main="Frequency of Campaign Transactions", xlab="Month")
+hist(as.numeric(format(CandidateDebtSub$debtdate, format="%Y")), breaks=seq(2007.5, 2012.5, 1), main="Frequency of Campaign Transactions", xlab="Year", col = "coral1", border = NA)
+hist(as.numeric(format(CandidateDebtSub$debtdate, format="%m")), breaks=seq(0.5, 12.5, 1), main="Frequency of Campaign Transactions", xlab="Month", col = "coral1", border = NA)
 barplot(table(sort(format(CandidateDebtSub$debtdate, format="%Y-%m"))),
             las = 1,
             cex.names = 0.5,
-            xlab='Number of transactions reported by month',
             col='coral1',
-            border=NA)
+            border=NA,
+        main = 'Number of transactions reported by month')
 ```
 
 These charts show us the following:
@@ -895,19 +901,31 @@ rm(list = c("aggr_descr0", "aggr_descr", "aggr_descr_office", "aggr_descr_office
 ### 5 Conclusion
 
 Several important high level observations can be made about this data:
+
 * Candidates spend the most amout of their money on consulting, though the make frequent swag (ie campagin material) purchases.
+
 * Somewhat ironically, a substantial fraction of the amount spent was spent on the same consultancies, likely for the same services, HIRSCHBERG STRATEGIES INC. and NEW PARTNERS CONSULTING INC., which together accounted for over 43% of all money spent. Their services were priced high at $5070.14 and $19,000, collectively.
+
 * Spending patterns over the year and full campaign cycle is hard to predict on a month by month basis, however, spending clearly ramps up the year of an election.
+
 * Predictably, the highest number of candidates run for state senate and representative positions.
+
 * The highest spenders per candidate were for public lands commissioner, state treasurer, and appeals court judge, in descending order. 
+
 * The offices that were responsible for the highest transaction volume were state representative and county commissioner.
+
 * Reported spending frequency was skewed towards low transaction amounts, while total transaction volume was skewed towards high transaction amounts. Over 60% of transaction volume was from expenditures over $5,000. This demonstrates that a small fraction of the candidates are spending the majority of the money.
 
-While we were able to identify these simple, high level observations, our analysis was significantly constrained by the some inconsistencies and shortcomings in the data. In order to improve our analysis in the future, we recommend the following improved practices:
+While we were able to identify these simple, high level observations, our analysis was significantly constrained by some inconsistencies and shortcomings in the data. In order to improve our analysis in the future, we recommend the following improved practices:
+
 * Force Consistency at Capture Point: Given the multiple unique values per candidate per cyclce for things like 'party,' we recommend a data capture strategy that forces consistency.  If a candidate has debt filings with disputing values, we should address the discrepancy directly with the candidate and ask them for clarification.
+
 * Audit of Existing Data: Any other historical data related to candidate debt should be audited for consistency and quality to make sure it doesn't also suffer from the same consistency problems.
+
 * We would like to datasets that extend beyond a single election cycle in order to be able to discern consistencies, discrepancies, and trends between them.
+
 * The dataset should include a comprehensive list of candidates, even those that have not filed debt reports. This data may fill gaps in other variables, such as party affiliation, and point to important patters related to candidates that do and do not comply with these transparency efforts.
+
 * Last and perhaps most importantly, the data set should provide a significant variable of interest - election outcome. These will enable us to look at how spending and specific vendors influence election outcomes.
 
 
