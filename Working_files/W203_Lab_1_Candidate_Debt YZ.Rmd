@@ -1,0 +1,756 @@
+---
+title: 'W203 Lab 1: Candidate Debt EDA'
+author: "Yulia and Mitch"
+date: \today
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+options(width=60)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, tidy=TRUE, strip.white = TRUE, tidy.opts=list(width.cutoff=60), size="small")
+```
+
+#### 1. Introduction
+
+#### 1.1 Introduction
+
+
+
+
+### 1.2 Loading Data
+
+```{r}
+CandidateDebt <- read.csv("CandidateDebt.csv", 
+                          stringsAsFactors = FALSE)
+str(CandidateDebt)
+```
+
+Problems with target variable *amount*:
+
+```{r}
+table(CandidateDebt$amount)
+```
+
+Resolution: shift column names:
+
+```{r}
+# get column names from row data
+var_names <- colnames(read.csv("CandidateDebt.csv", nrows = 1))
+
+# insert column after "position" and remove last column
+var_names_corrected <- c(var_names[1:grep("position", var_names)],
+                         "position2",
+                         var_names[(grep("position", var_names) + 1):(length(var_names) - 1)])
+```
+
+Re-loading raw data:
+
+```{r}
+# reading the data with correct headers
+CandidateDebt <- read.csv("CandidateDebt.csv", 
+                          stringsAsFactors = FALSE,
+                          col.names = var_names_corrected)
+rm(list = c("var_names", "var_names_corrected"))
+```
+
+Description of data set:
+
+Blah Blah Blah
+
+```{r}
+dim(CandidateDebt)
+```
+
+```{r}
+# Converting target variable to numeric
+CandidateDebt$amount_num <- as.numeric(CandidateDebt$amount)
+summary(CandidateDebt$amount_num)
+```
+
+### 1.2 Exploring rows with missing debt data
+
+```{r}
+# creating flag for missing values (1 for missing)
+CandidateDebt$missing_amount <- ifelse(is.na(CandidateDebt$amount_num), 1, 0)
+table(CandidateDebt$missing_amount)
+```
+
+While exploring 56 rows with missing data, we discovered that those rows are missing data in all columns except filer name and office they run for.
+Good news is we are losing only one candidate if we exclude those 56 rows from the analysis. No unique values of *office* variable are among 56 rows.
+
+```{r}
+# number of of unique filer ids (candidates in full dataset)
+length(unique(CandidateDebt$filerid))
+# number of unique filer ids (candidates) in data set without 56 rows with missing data:
+length(unique(CandidateDebt[CandidateDebt$missing_amount == 0,]$filerid))
+```
+
+```{r}
+# number of of unique values of office (candidates in full dataset)
+length(unique(CandidateDebt$office))
+# number of unique values of office in data set without 56 rows with missing data:
+length(unique(CandidateDebt[CandidateDebt$missing_amount == 0,]$office))
+```
+
+```{r}
+# converting dates from character to dates
+CandidateDebt$fromdate <- as.Date(CandidateDebt$fromdate, format = "%m/%d/%y")
+CandidateDebt$thrudate <- as.Date(CandidateDebt$thrudate, format = "%m/%d/%y")
+CandidateDebt$debtdate <- as.Date(CandidateDebt$debtdate, format = "%m/%d/%y")
+```
+
+### 1.3 Creating analytic dataset
+
+Exlcude variables:
+
+- origin (one value = B.3)
+
+- filertype (one value = Candidate)
+
+- filername, firstname, middleinitial, lastname (will use filerid as a candidate identifier)
+
+- position and position2 (values are not clear and were messed up in raw data)
+
+- electionyear (one value = 2012)
+
+- recordtype (one value = DEBT)
+
+```{r}
+# creating a vector of variables to keep for analysis
+keep_vars <- c("reportnumber", "filerid", "filername", "office", "legislativedistrict",
+    "party", "jurisdiction", "jurisdictioncounty", "jurisdictiontype",
+    "amount_num", "fromdate", "thrudate", "debtdate", "code", "description",
+    "vendorname", "vendoraddress","vendorcity", "vendorstate")
+
+# removing 56 rows with missing data
+CandidateDebtSub <- CandidateDebt[CandidateDebt$missing_amount == 0,]
+CandidateDebtSub <- CandidateDebtSub[keep_vars]
+rm(keep_vars)
+```
+
+Looking at main analytic dataset:
+
+```{r}
+summary(CandidateDebtSub)
+```
+
+```{r}
+# checking for presense of missing values
+sum(is.na(CandidateDebtSub))
+```
+
+### 1.4 Evaluating data quality
+
+Calculating number of unique values per candidate for campaign related variable
+
+```{r}
+aggr_office <- aggregate(amount_num ~ filerid + office, data = CandidateDebtSub, sum)
+aggr_office <- aggregate(office ~ filerid, data = aggr_office, length)
+
+aggr_legdis <- aggregate(amount_num ~ filerid + legislativedistrict, data = CandidateDebtSub, sum)
+aggr_legdis <- aggregate(legislativedistrict ~ filerid, data = aggr_legdis, length)
+
+aggr_party <- aggregate(amount_num ~ filerid + party, data = CandidateDebtSub, sum)
+aggr_party <- aggregate(party ~ filerid, data = aggr_party, length)
+
+aggr_jur <- aggregate(amount_num ~ filerid + jurisdiction, data = CandidateDebtSub, sum)
+aggr_jur <- aggregate(jurisdiction ~ filerid, data = aggr_jur, length)
+
+aggr_jurc <- aggregate(amount_num ~ filerid + jurisdictioncounty, data = CandidateDebtSub, sum)
+aggr_jurc <- aggregate(jurisdictioncounty ~ filerid, data = aggr_jurc, length)
+
+aggr_jurt <- aggregate(amount_num ~ filerid + jurisdictiontype, data = CandidateDebtSub, sum)
+aggr_jurt <- aggregate(jurisdictiontype ~ filerid, data = aggr_jurt, length)
+
+aggr_comb <- cbind(aggr_office, 
+                   aggr_legdis[,2],
+                   aggr_party[,2],
+                   aggr_jur[,2],
+                   aggr_jurc[,2],
+                   aggr_jurt[,2])
+
+colnames(aggr_comb) <- c("filerid", "office", "legislativedistrict", "party", "jurisdiction", 
+                         "jurisdictioncounty", "jurisdictiontype")
+rm(list = c("aggr_office", "aggr_legdis", "aggr_party", "aggr_jur", "aggr_jurc", "aggr_jurt"))
+
+#knitr::kable(summary(aggr_comb[, -1]), caption = "Table with kable")
+summary(aggr_comb[, -1])
+```
+
+
+The results of this preliminary analysis are not encouraging, and indicate that several fields that would otherwise be of interest to us are not completely accurate. More specifically, the variables legislative district, party, jurisdiction, jurisdictioncounty, and jurisditctiontype, each have instances in which the same candidate has more than one value in the dataset.  Given that candidates can only have one value for each of these in a given election cycle, this suggests that some or all of the values contained in these columns is not reliable.  To avoid making recommendations on inaccurate data, this analysis will exclude these variables, and provide guidance for how the [CLINT] can best improve data quality moving forward.  
+
+---Based on the above, we think all but *office* variables are unreliable
+
+```{r}
+# creating flag variables for candidates with more than 1 unique value
+aggr_comb$legdist_mult <- ifelse(aggr_comb$legislativedistrict > 1, 1, 0)
+aggr_comb$party_mult <- ifelse(aggr_comb$party > 1, 1, 0)
+aggr_comb$jur_mult <- ifelse(aggr_comb$jurisdiction > 1, 1, 0)
+aggr_comb$jurc_mult <- ifelse(aggr_comb$jurisdictioncounty > 1, 1, 0)
+aggr_comb$jurt_mult <- ifelse(aggr_comb$jurisdictiontype > 1, 1, 0)
+aggr_comb$mult <- aggr_comb$legdist_mult + aggr_comb$party_mult + aggr_comb$jur_mult +
+  aggr_comb$jurc_mult + aggr_comb$jurt_mult
+table(aggr_comb$mult)
+```
+
+Only 34 candidates with "clean" data
+
+```{r}
+# adding this flag variable to the main data set
+CandidateDebtSub <- merge(CandidateDebtSub, aggr_comb[, c("filerid", "mult")], by = "filerid")
+rm(aggr_comb)
+```
+
+```{r}
+# counting number of unique offices among those 34 candidates
+length(unique(CandidateDebtSub$office[CandidateDebtSub$mult == 0]))
+```
+```{r}
+# counting number of unique parties/offices among those 34 candidates
+aggr_party <- aggregate(amount_num ~ filerid + party + office, data = CandidateDebtSub[CandidateDebtSub$mult == 0,], sum)
+table(aggr_party$office, aggr_party$party)
+rm(aggr_party)
+```
+
+Based on the above, only "State Prepresentative" and "Superior Court Judge" had representatives of two major parties.This is suspect.
+Hence, we will eclude the following 5 variables from the analysis: *legislativedistrict*, *party*, *jurisdiction*, *jurisdictioncounty*, *jurisdictiontype*
+
+### 1.5 Creating extra variables
+
+Processing date variables
+
+```{r}
+summary(CandidateDebtSub$debtdate)
+summary(CandidateDebtSub$fromdate)
+summary(CandidateDebtSub$thrudate)
+```
+
+Based on the above we will assume that the election was in August 2012
+
+```{r}
+# Number of months before election the debt occured
+CandidateDebtSub$weeksindebt <- 
+  round(difftime(max(CandidateDebtSub$debtdate), CandidateDebtSub$debtdate, units = "weeks"))
+CandidateDebtSub$monthsindebt <- 
+  round(CandidateDebtSub$weeksindebt / 52 * 12)
+CandidateDebtSub$monthsindebt <- 
+  as.numeric(CandidateDebtSub$monthsindebt)
+# capping months at 13 months (for exploratory reasons)
+CandidateDebtSub$monthsindebt_cap <- 
+  ifelse(CandidateDebtSub$monthsindebt > 12, 13, CandidateDebtSub$monthsindebt)
+summary(CandidateDebtSub$monthsindebt)
+summary(CandidateDebtSub$monthsindebt_cap)
+```
+
+Recoding debt *description* variable to make it more digestable
+
+```{r}
+creditcard <- c("AM EX", "AMERICAN EXPRESS", "AMERICAN EXPRESS LOWES", "AMEX",
+                "CITI MASTERCARD", "MASTERCARD", "VISA", "CAPITOL ONE",
+                "MASTER CARD")
+consulting <- c("CONSULTING", "JANUARY SERVICES", "$750 PER MONTH THROUGH OCTOBER",
+                "AUGUST CONSULTING", "CONSULTING ESTIMATE", "CONSULTING/PHOTOGRAPHY",
+                "CONSULTING/TRAVEL", "MAY CONSULTING SERVICES", "MONTHLY CONSULTING FEE",
+                "RETAINER", "APRIL RETAINER")
+swag <- c("RE-ORDER TEE SHIRTS", "BUMPER STICKERS/FLYERS", "CONSULTING/YARD SIGNS", 
+          "YARD SIGNS", "OFFICE SUPPLIES/ WATER FOR KICKOFF")
+
+CandidateDebtSub$description_aggr[grepl("TREASURY", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "TREASURY"
+CandidateDebtSub$description_aggr[grepl("CAMPAIGN", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "CAMPAIGN MANAGEMENT"
+CandidateDebtSub$description_aggr[grepl("FUND", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "FUNDRAISING"
+CandidateDebtSub$description_aggr[grepl("CARRY FORWARD", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "CARRY FORWARD"
+CandidateDebtSub$description_aggr[grepl("REIMB", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "REIMBURSEMENT"
+CandidateDebtSub$description_aggr[grepl("ACCOUNTING", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "ACCOUNTING"
+CandidateDebtSub$description_aggr[grepl("BONUS", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "BONUS"
+CandidateDebtSub$description_aggr[grepl("DESIGN", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DESIGN/PRINT"
+CandidateDebtSub$description_aggr[grepl("PRINT", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DESIGN/PRINT"
+CandidateDebtSub$description_aggr[grepl("POLLING", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "POLLING"
+CandidateDebtSub$description_aggr[grepl("CREDIT", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "CREDIT CARD"
+CandidateDebtSub$description_aggr[CandidateDebtSub$vendorname %in% creditcard] <-
+  "CREDIT CARD"
+CandidateDebtSub$description_aggr[CandidateDebtSub$description %in% consulting] <-
+  "CONSULTING"
+CandidateDebtSub$description_aggr[CandidateDebtSub$description %in% swag] <-
+  "SWAG"
+CandidateDebtSub$description_aggr[grepl("MAIL", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "MAIL"
+CandidateDebtSub$description_aggr[grepl("POSTAGE", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "MAIL"
+CandidateDebtSub$description_aggr[grepl("STAMPS", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "MAIL"
+CandidateDebtSub$description_aggr[grepl("DATA", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("DISPLAY", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("WEB", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("ADVERTISEMENT", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[grepl("COMPUTER", CandidateDebtSub$description, ignore.case = TRUE)] <-
+  "DATA/TECH/AD"
+CandidateDebtSub$description_aggr[is.na(CandidateDebtSub$description_aggr)] <- "OTHER"
+
+rm(list = c("creditcard", "consulting", "swag"))
+table(CandidateDebtSub$description_aggr)
+#table(CandidateDebtSub$description[CandidateDebtSub$description_aggr == "OTHER"])
+```
+
+Now we are ready to explore!
+
+#### 2. Univariate Analysis
+
+Univariate analysis was conducted on the variables that were not determined to have faulty data.  The objective of this subset of analysis is to better understand the behavior of each variable and to identify specific variables that may be informative in a bivariate analysis.  Specifically, the variables to be examined in this section are:
+- Amount: The amount of the debt incurred or order placed.
+- Office: The office sought by the candidate
+- WeeksinDebt
+- Code:  The type of debt
+- description_aggr (Derived): A derived field categorizing the type of expense of the debt, based on the debt description field
+- weeksindebt (Derived): A derived field showing the length time the debt was held for, based on the debt date and 
+
+
+### 2.1 Univariate Analysis - Amount
+
+```{r}
+summary(CandidateDebtSub$amount_num)
+```
+
+```{r}
+# Amount
+
+hist(CandidateDebtSub$amount, 
+     breaks=50, 
+     main = 'Frequency of Debt Filing by Debt Amount', 
+     col='coral1', 
+     border=NA, 
+     xlim = range(0:20000),
+     xaxt = "n",
+     xlab = 'Debt Amount ($)')
+axis(1, at = seq(0, 20000, 2000),
+     labels = seq(0, 20000, 2000),
+     cex.axis = 0.6)
+```
+
+The amounts associated with each filing are between $3.24 and $19,000, with the majority being less than $500.    
+```{r}
+CandidateDebtSub[CandidateDebtSub$amount_num >= 19000, c("office", "amount_num", "description")]
+```
+
+
+There are two notable observations when looking at a histogram of the variable: the outlier group of 8 filings of $19,000, and the large cluster of amounts just over $5,000.
+
+
+### 2.2 Univariate Analysis - Office
+
+### YZ: this chart needs a legend
+
+```{r}
+par(mar=c(4,8,4,5))
+barplot(sort(table(CandidateDebtSub$office)), 
+            horiz=TRUE, 
+            las = 1, 
+            cex.names = 0.5,
+            col='coral1', 
+            border=NA)
+title('Number of Debt Filings by Political Office of Candidate',
+      cex.main = 0.8)
+```
+
+
+The vast majority of filings in the existing dataset are from respondents running for or currently serving as State REpresentatives and State Senators.  Given that there are many more seats for those positions, this finding is to be expected.  
+
+### 2.3 Univariate Analysis - Vendor State & Vendor City
+
+```{r}
+table(CandidateDebtSub$vendorstate)
+```
+
+It appears there are 25 values for which there is no listed State for the deb holder.  Looking at those values, they all appear to be associated with Credit Card debt.
+
+```{r}
+DF <- as.data.frame(CandidateDebtSub)
+table(DF$vendorname[DF$vendorstate == ''])
+rm(DF)
+```
+
+```{r}
+#table(CandidateDebtSub$vendorcity)
+aggr_city <- aggregate(reportnumber ~ vendorcity, CandidateDebtSub, length)
+colnames(aggr_city) <- c("Vendor City", "Number of Reports")
+aggr_city[order(-aggr_city$`Number of Reports`),]
+rm(aggr_city)
+```
+
+### 2.4 Univariate Analysis - Code
+
+```{r}
+# Code
+aggr_code <- aggregate(reportnumber ~ code, CandidateDebtSub, length)
+colnames(aggr_code) <- c("Code", "Number of Reports")
+aggr_code[order(-aggr_code$`Number of Reports`),]
+rm(aggr_code)
+```
+
+
+### 2.5 Univariate Analysis - Vendor
+
+```{r}
+par(mar=c(4,10,4,4))
+vendorTable <- sort(table(CandidateDebtSub$vendorname),decreasing = TRUE)
+barplot(sort(vendorTable[1:15]), 
+        horiz = TRUE,
+        las = 2, 
+        cex.names=0.5, 
+        cex.axis = 0.8,
+        xlim = range(0:250),
+        axes = FALSE,
+        col='coral1', 
+        border=NA)
+axis(1, at = seq(0, 250, 50),
+     cex.axis = 0.6,
+     las = 1)
+title('Number of Debt Filings by Vendor',
+      cex.main = 0.9)
+```
+
+#### 3. Analysis of Key Relationships
+
+### 3.1 Number of Candidates and Average Debt per Candidate By Office
+
+As we covered in the earlier sections, the final analytical dataset contains data on 140 candidates that filed debt reports. Based on the first chart in the figure below, almost half of the candidates were running for "State Representative". "County Commissioner", "State Senator" and "Superior Court Judge" offices had between 15 and 20 candidates, while the rest of the offices had less than five. Is it possible that not all candidates accumulated any debt during the eleciton and, hence, don't have a recored in this report? That would be an important piece of information to add to make this analysis more comprehensive.
+Another piece of data required for a complete picture is the number of seats available at each office. We would use it to normalize the metric and understand if there was a disproportionate number of candidates filing debt reports in some offices vs. the others.
+The second chart in the figure below displays average debt per candidates by Office during the election. It is interesting to note that the offices with the highest average debt per candidate (Public Lands Commissioner, State Treasurer and Appeals Court Judge) had the smallest number of candidates in the election (assuming they all filed debt reports). However, we cannot make any conclusions based only on these few data points. Is it just a coincidence? Are the campaigns for these offices more expensive? Or were candidates not able to raise enough money?
+
+```{r}
+aggr_office <- aggregate(amount_num ~ filerid + office, data = CandidateDebtSub, sum)
+aggr_office <- aggregate(filerid ~ office, data = aggr_office, length)
+aggr_office2 <- aggregate(amount_num ~ office, data = CandidateDebtSub, sum)
+aggr_office <- cbind(aggr_office, aggr_office2[,2])
+colnames(aggr_office)[3] <- c("amount_num")
+aggr_office$amount_p_cand <- aggr_office$amount_num / aggr_office$filerid
+
+par(mar = c(8,4,1,0), 
+    oma = c(0,0,0,0),
+    mfrow = c(1,2))
+barplot(aggr_office$filerid,
+        names.arg = aggr_office$office,
+        cex.names = 0.5,
+        cex.axis = 0.5,
+        border = NA,
+        las = 2,
+        ylim = range(0, 70),
+        ylab = "Number of Candidates",
+        col = "coral1")
+title("Number of Candidates That Filed Debt Forms (by Office)",
+      cex.main = 0.5)
+
+par(mar = c(8,4,1,0)) 
+barplot(aggr_office$amount_p_cand,
+        names.arg = aggr_office$office,
+        cex.names = 0.5,
+        cex.axis = 0.5,
+        border = NA,
+        las = 2,
+        ylab = "Average Debt ($)",
+        col = "coral4")
+title("Average Debt Per Candidate (by Office)",
+      cex.main = 0.5)
+rm(list = c("aggr_office", "aggr_office2"))
+
+```
+
+
+### 3.2 Timing Analysis of the Debt
+
+Let's take a look on how debt occured in the months leading to the election (across all candidates and all offices).
+Overall, the first debt report available in the file was dated 46 months prior to the election. However, debt amounts were relatively small until 7 months prior to the election (with two exceptions of 18 and 14 months). Moreover, the largest amount of debt in the entire campaign happened 6 months before the election. We would need to investigate why that was. Were there certain events in the campaign calendar that required significant spend at that time? Or was it a consequence of individual candidates spending patterns? One of the ways to approach this question would be to compare this patter across multiple campaigns.
+
+```{r}
+aggr_months <- aggregate(amount_num ~ monthsindebt, data = CandidateDebtSub, sum)
+aggr_months <- aggr_months[order(-aggr_months$monthsindebt),]
+
+barplot(aggr_months$amount_num/1000,
+        names.arg = aggr_months$monthsindebt,
+        cex.names = 0.8,
+        cex.axis = 0.8,
+        ylim = range(0, 450),
+        las = 2,
+        border = NA,
+        axes = FALSE,
+        xlab = "Months till election",
+        ylab = "Debt (in $'000)",
+        col = "coral1")
+axis(2, at = seq(0, 450, 50),
+     cex.axis = 0.6,
+     las = 1)
+title("Debt Accumulation Before Election",
+      cex.main = 1)
+
+rm(aggr_months)
+```
+
+### 3.3 Debt Type
+
+One of the key questions we tried to investigate was how candidates spent campaing money. This was captured in the description variable. We aggregated it into fewer groups for analysis purposes.
+We can see from the first chart below, that most of the reports were related to campaign materials. And while consulting related debt reports were only #3 by their abosolute quantity, this category was by far the largest in terms of amount spent. Is it common practice to spend this much on consulting? We would need to compare a few campaigns to make any conclusions. 
+
+```{r}
+# description_aggr
+
+aggr_descr <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
+aggr_descr <- aggr_descr[order(aggr_descr$amount_num),]
+
+par(mar=c(2,7,2,2),
+    mfrow=c(2,1))
+barplot(sort(table(CandidateDebtSub$description_aggr)), 
+        horiz = TRUE,
+        las = 2, 
+        cex.names=0.5, 
+        col='coral1', 
+        border=NA,
+        axes = FALSE)
+axis(1, at = seq(0, 300, 50),
+     cex.axis = 0.6,
+     las = 1)
+title('Number of Debt Filings by Debt Description (Derived)',
+      cex.main = 0.7)
+
+#par(mar=c(4,12,4,4))
+barplot(aggr_descr$amount_num, 
+        names.arg = aggr_descr$description_aggr,
+        horiz = TRUE,
+        las = 2, 
+        cex.names=0.5, 
+        axes = FALSE,
+        col='coral1', 
+        border=NA)
+axis(1, at = seq(0, 800000, 100000),
+     cex.axis = 0.6,
+     labels = seq(0, 800, 100),
+     las = 1)
+title('Total Debt Amount By Debt Description in $000 (Derived)',
+      cex.main = 0.7)
+rm(aggr_descr)
+
+```
+
+In order to analyze the distribution of debt amount by description group, we decided to log our amount variable. Otherwise, it was hard to see any patterns.
+The boxplot below shows that consulting expectedly had the highest mean (after carry forward), but it is interesting to note how small Q1-Q3 range is (with a lot of outliers). It is due to the fact that a lot of the reports in this category had exactly the same amount. According to the report, a lot of candidates were paying the same amount of money to the same vendor for the same service. Is it a clerical error? Or is it some standard service that candidates require during campaigns? We would need to interview campaign managers and the consulting firm to investigate.
+
+```{r}
+aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
+aggr_descr0 <- aggr_descr0[order(-aggr_descr0$amount_num),]
+
+par(mar = c(7,4,2,3), 
+    oma = c(0,0,0,0),
+    xpd = TRUE)
+boxplot(amount_num ~ description_aggr, data = CandidateDebtSub,
+        log = "y",
+        ylab = "Amount of Debt in Individual Report (log)",
+        las = 2,
+        cex.names = 0.5,
+        cex.axis = 0.5,
+        col = "coral1",
+        border = "coral4")
+title("Distribution of Report Debt Amount by Description",
+      cex.main = 1)
+```
+
+#### 4. Analysis of Secondary Effects
+
+There are multiple secondary effects that come into play while trying to understand candidate debt. It is actually quite challenging to look only at bivariate relationships in this data set. So far, the analysis indicated that debt amounts differ by office, by month they occured in, by type of transactions. There are also factors that we can't actually analyze at this point (party in particular).
+For the purposes of this section, we will look into types of interactions of debt amount: (1) with office and month and (2) with office and type of transaction. 
+
+### 4.1 Timing Analysis of the Debt by Office
+
+We looked previously at how debt occured by months leading to the election. Now if we split this by office (see chart below), we see that "State Representative" candidates were spending disproportionately more in 7+ before the elections. They were still spending more than other candidates in months 0-6, but their share was much smaller than before. 
+Questions to investigate: Are campaigns for "State Representatives" longer than for other offices? Why do candidates start spending so much earlier than others?  
+
+```{r}
+aggr_months_office <- aggregate(amount_num ~ monthsindebt + office, data = CandidateDebtSub, sum)
+aggr_months_office <-
+  reshape(aggr_months_office, 
+          v.names = "amount_num", 
+          idvar = "office",
+          timevar = "monthsindebt",
+          direction = "wide")
+
+aggr_months_office[is.na(aggr_months_office)] <- 0
+
+aggr_months_office$amount_num.19plus = 
+  aggr_months_office$amount_num.19 +
+  aggr_months_office$amount_num.20 +
+  aggr_months_office$amount_num.21 +
+  aggr_months_office$amount_num.22 +
+  aggr_months_office$amount_num.23 +
+  aggr_months_office$amount_num.31 +
+  aggr_months_office$amount_num.32 +
+  aggr_months_office$amount_num.33 +
+  aggr_months_office$amount_num.40 +
+  aggr_months_office$amount_num.42 +
+  aggr_months_office$amount_num.43 +
+  aggr_months_office$amount_num.46
+
+keep_vars <- c("office", "amount_num.19plus", "amount_num.18", "amount_num.17", 
+               "amount_num.16", "amount_num.15", "amount_num.14", "amount_num.13", 
+               "amount_num.12", "amount_num.11", "amount_num.10", "amount_num.9", 
+               "amount_num.8", "amount_num.7", "amount_num.6", "amount_num.5", 
+               "amount_num.4", "amount_num.3", 
+               "amount_num.2", "amount_num.1", "amount_num.0")  
+new_vars <- c("office", "Month.19p", "Month.18", "Month.17", "Month.16", "Month.15", 
+              "Month.14", "Month.13", "Month.12", "Month.11", "Month.10", "Month.9", 
+              "Month.8", "Month.7", "Month.6", "Month.5", "Month.4", "Month.3", 
+              "Month.2", "Month.1", "Month.0")  
+
+aggr_months_office <- aggr_months_office[, keep_vars]
+colnames(aggr_months_office) <- new_vars
+aggr_months_office2 <- aggr_months_office[,-1]
+rownames(aggr_months_office2) <- aggr_months_office[, 1]
+
+par(mar = c(6,5,2,1), 
+    oma = c(0,0,0,0))
+barplot(as.matrix(aggr_months_office2), 
+        border="white", 
+        space=0.04, 
+        cex.names = 0.6,
+        las = 2,
+        cex.axis = 0.8,
+        col = rainbow(16),
+        axes = FALSE,
+        ylim = range(0, 500000),
+        xlab = "Months till election",
+        ylab = "Debt (in $'000)")
+axis(2, at = seq(0, 500000, 50000),
+     cex.axis = 0.5,
+     labels = seq(0, 5000, 500),
+     las = 1)
+legend("topright", 
+       legend = rownames(aggr_months_office2), 
+       fill = rainbow(16), 
+       inset = c(0.365, 0),
+       ncol = 2,
+       cex = 0.5)
+title("Debt Accumulation Before Election by Office",
+      cex.main = 1)  
+
+rm(list = c("keep_vars", "new_vars", "aggr_months_office2"))
+```
+
+Now we know that "State Representatives" were the largest cohort of candidates, hence, they will dominate absolute debt amounts every month. 
+In the chart below, we analyze time composition of debt for each office. Here we can see that spending patterns by office are very different. "Governor" and "State Treasurer", for example, occure most of their debt 12+ months prior to the election, while candidates for three county offices (commissioner, assessor, and council member) had the largest share of their debts 6 months before the election. Again, we would need to understand office campaign specifics to draw any conclusions.
+
+```{r}
+amount_by_office <- aggregate(amount_num ~ office, data = CandidateDebtSub, sum)
+aggr_months_office <- cbind(aggr_months_office, amount_by_office[,2])
+colnames(aggr_months_office)[22] <- "amount"
+aggr_months_office$Month.12p <- 100 * (aggr_months_office$Month.19p +
+  aggr_months_office$Month.18 +
+  aggr_months_office$Month.17 +
+  aggr_months_office$Month.16 +
+  aggr_months_office$Month.15 +
+  aggr_months_office$Month.14 +
+  aggr_months_office$Month.13 +
+  aggr_months_office$Month.12) / aggr_months_office$amount
+aggr_months_office$Month.11 <- 100 * aggr_months_office$Month.11 / aggr_months_office$amount
+aggr_months_office$Month.10 <- 100 * aggr_months_office$Month.10 / aggr_months_office$amount
+aggr_months_office$Month.9 <- 100 * aggr_months_office$Month.9 / aggr_months_office$amount
+aggr_months_office$Month.8 <- 100 * aggr_months_office$Month.8 / aggr_months_office$amount
+aggr_months_office$Month.7 <- 100 * aggr_months_office$Month.7 / aggr_months_office$amount
+aggr_months_office$Month.6 <- 100 * aggr_months_office$Month.6 / aggr_months_office$amount
+aggr_months_office$Month.5 <- 100 * aggr_months_office$Month.5 / aggr_months_office$amount
+aggr_months_office$Month.4 <- 100 * aggr_months_office$Month.4 / aggr_months_office$amount
+aggr_months_office$Month.3 <- 100 * aggr_months_office$Month.3 / aggr_months_office$amount
+aggr_months_office$Month.2 <- 100 * aggr_months_office$Month.2 / aggr_months_office$amount
+aggr_months_office$Month.1 <- 100 * aggr_months_office$Month.1 / aggr_months_office$amount
+aggr_months_office$Month.0 <- 100 * aggr_months_office$Month.0 / aggr_months_office$amount
+
+new_vars <- c("Month.12p", "Month.11", "Month.10", "Month.9", 
+              "Month.8", "Month.7", "Month.6", "Month.5", "Month.4", "Month.3", 
+              "Month.2", "Month.1", "Month.0")  
+
+aggr_months_office2 <- aggr_months_office[,new_vars]
+aggr_months_office3 <- as.data.frame(t(aggr_months_office2))
+colnames(aggr_months_office3) <- aggr_months_office[,1]
+
+par(mar = c(8,4,2,3), 
+    oma = c(0,0,0,0),
+    xpd = TRUE)
+barplot(as.matrix(aggr_months_office3),
+        border="white",
+        space=0.04,
+        cex.names = 0.5,
+        las = 2,
+        cex.axis = 0.8,
+        col = rainbow(12, s = 0.75),
+        ylab = "Share of Debt (%)")
+legend("topright",
+       legend = rev(rownames(aggr_months_office3)),
+       fill = rainbow(12, s = 0.75),
+       inset = c(-0.105, 0),
+       ncol = 1,
+       cex = 0.6)
+title("Debt Composition By Month by Office",
+      cex.main = 1)
+
+rm(list = c("new_vars", "aggr_months_office", "aggr_months_office2", 
+            "aggr_months_office3", "amount_by_office"))
+```
+
+### 4.2 Composition of Debt by Office by Description 
+
+Previously, we identified Consulting as the biggest debt bucket for the candidates. As expected, "State Representative" candidates, as the largest cohort, were responsible for the most spend of this category. "Superior Court Judge" reported the second largest share of consulting-related debt. Other offices also contributed a distinguishable share. 
+On the other hand, all other debt categories were predominantly generated by "State Representatives". Why is it that debt was more diverse for "State Representatives" compared to other offices? Is it because there were more candidates? Of was it because that campaign was distinctly different from others?
+
+```{r}
+aggr_descr0 <- aggregate(amount_num ~ description_aggr, data = CandidateDebtSub, sum)
+aggr_descr0 <- aggr_descr0[order(-aggr_descr0$amount_num),]
+aggr_descr <- aggregate(amount_num ~ office + description_aggr, data = CandidateDebtSub, sum)
+aggr_descr_office <-
+  reshape(aggr_descr, 
+          v.names = "amount_num", 
+          idvar = "office",
+          timevar = "description_aggr",
+          direction = "wide")
+aggr_descr_office[is.na(aggr_descr_office)] <- 0
+
+colnames(aggr_descr_office) <- sub("amount_num.", "", colnames(aggr_descr_office))
+aggr_descr_office2 <- aggr_descr_office[,aggr_descr0[,1]]
+rownames(aggr_descr_office2) <- aggr_descr_office[, 1]
+
+par(mar = c(8,4,2,3), 
+    oma = c(0,0,0,0),
+    xpd = TRUE)
+barplot(as.matrix(aggr_descr_office2), 
+        border="white", 
+        space=0.04, 
+        cex.names = 0.6,
+        las = 2,
+        cex.axis = 0.6,
+        col = rainbow(15),
+        axes = FALSE,
+        ylab = "Debt (in $'000)")
+axis(2, at = seq(0, 800000, 100000),
+     labels = seq(0, 8000, 1000),
+     cex.axis = 0.6,
+     las = 1)
+legend("topright",
+       legend = rev(rownames(aggr_descr_office2)),
+       fill = rainbow(15),
+       ncol = 2,
+       cex = 0.7)
+title("Debt Composition by Description by Office",
+      cex.main = 1)
+
+rm(list = c("aggr_descr0", "aggr_descr", "aggr_descr_office", "aggr_descr_office2"))
+```
